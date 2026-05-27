@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bluey — French Bulldog Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f7f4ef;
+  --sidebar-bg: #1a1a2e;
+  --card: #ffffff;
+  --card-border: #ede8df;
+  --accent: #4f8ef7;
+  --accent-dark: #2563eb;
+  --accent-light: #eff6ff;
+  --text: #1a1a2e;
+  --text-muted: #6b7280;
+  --text-light: #9ca3af;
+  --danger: #ef4444;
+  --success: #10b981;
+  --warning: #f59e0b;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+/* SIDEBAR */
+.sidebar { width: 230px; min-width: 230px; background: var(--sidebar-bg); display: flex; flex-direction: column; position: fixed; height: 100vh; top: 0; left: 0; z-index: 100; overflow-y: auto; }
+.sidebar-header { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+.dog-avatar { width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #4f8ef7, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 12px; overflow: hidden; }
+.dog-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dog-name { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: #fff; }
+.dog-breed { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+.dog-age-pill { display: inline-block; margin-top: 8px; padding: 3px 10px; background: rgba(79,142,247,0.18); border: 1px solid rgba(79,142,247,0.3); border-radius: 20px; font-size: 11px; font-weight: 600; color: #93bbfd; }
+.nav-section { padding: 14px 12px 6px; }
+.nav-section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.25); padding: 0 8px; margin-bottom: 6px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; border-radius: 10px; margin-bottom: 2px; font-size: 13.5px; font-weight: 500; color: rgba(255,255,255,0.5); transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; }
+.nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); }
+.nav-item.active { background: rgba(79,142,247,0.18); color: #93bbfd; }
+.nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.7; }
+.nav-item.active .nav-icon { opacity: 1; }
+.sidebar-bottom { margin-top: auto; padding: 12px; border-top: 1px solid rgba(255,255,255,0.07); }
+
+/* MAIN */
+.main { margin-left: 230px; flex: 1; padding: 32px 36px; max-width: calc(100vw - 230px); min-height: 100vh; }
+
+/* PAGE HEADER */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; gap: 16px; }
+.page-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; color: var(--text); }
+.page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+/* BUTTONS */
+.btn-primary { background: var(--accent); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
+.btn-primary:hover { background: var(--accent-dark); transform: translateY(-1px); }
+.btn-outline { background: #fff; color: var(--text); border: 1px solid var(--card-border); padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s; }
+.btn-outline:hover { background: var(--bg); }
+
+/* CARDS */
+.card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; }
+
+/* EMPTY STATE */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 8px; }
+.empty-icon { font-size: 36px; opacity: 0.3; margin-bottom: 4px; }
+.empty-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.empty-sub { font-size: 12px; color: var(--text-muted); text-align: center; max-width: 220px; }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* DASHBOARD */
+.dash-banner { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); border-radius: 20px; padding: 28px 32px; display: flex; align-items: center; gap: 22px; margin-bottom: 22px; position: relative; overflow: hidden; }
+.dash-banner::before { content: ''; position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; border-radius: 50%; background: rgba(79,142,247,0.12); }
+.dash-avatar { width: 72px; height: 72px; border-radius: 18px; background: linear-gradient(135deg, #4f8ef7, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 34px; flex-shrink: 0; overflow: hidden; }
+.dash-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.dash-name { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: #fff; }
+.dash-meta { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 3px; }
+.dash-tags { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.dash-tag { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 3px 12px; font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.stat-card { padding: 18px; }
+.stat-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 12px; }
+.stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.stat-value { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); }
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.section-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+
+/* ROUTINE */
+.routine-date-bar { display: flex; align-items: center; gap: 14px; padding: 14px 18px; margin-bottom: 16px; flex-wrap: wrap; }
+.routine-date-bar input[type="date"] { border: 1px solid var(--card-border); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+.routine-progress { margin-left: auto; font-size: 13px; color: var(--text-muted); }
+.routine-progress span { font-weight: 700; color: var(--accent); }
+.routine-section { margin-bottom: 22px; }
+.routine-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+.routine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.routine-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--bg); border: 1.5px solid var(--card-border); border-radius: 11px; cursor: pointer; transition: all 0.15s; user-select: none; }
+.routine-item:hover { border-color: var(--accent); background: var(--accent-light); }
+.routine-item.done { background: #f0fdf4; border-color: #86efac; }
+.routine-item.done .routine-check { background: var(--success); border-color: var(--success); }
+.routine-item.done .routine-check::after { opacity: 1; }
+.routine-item.done .routine-item-label { color: var(--text-muted); text-decoration: line-through; }
+.routine-check { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--card-border); background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; position: relative; }
+.routine-check::after { content: 'checkmark'; font-size: 0; color: #fff; font-weight: 700; opacity: 0; transition: opacity 0.15s; }
+.routine-item.done .routine-check::before { content: '✓'; font-size: 12px; color: #fff; font-weight: 800; }
+.routine-item-icon { font-size: 16px; flex-shrink: 0; }
+.routine-item-label { font-size: 13px; font-weight: 500; color: var(--text); transition: all 0.15s; }
+.routine-item-sub { font-size: 11px; color: var(--text-light); margin-top: 1px; }
+
+/* INTAKE */
+.date-bar { display: flex; align-items: center; gap: 16px; padding: 14px 18px; margin-bottom: 16px; flex-wrap: wrap; }
+.date-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+.date-bar input[type="date"] { border: 1px solid var(--card-border); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+.date-stats { display: flex; gap: 16px; margin-left: auto; flex-wrap: wrap; }
+.date-stat { font-size: 13px; color: var(--text-muted); }
+.date-stat span { font-weight: 700; color: var(--text); }
+.log-entry { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--card-border); }
+.log-entry:last-child { border-bottom: none; }
+.log-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
+.log-type { font-size: 13px; font-weight: 600; color: var(--text); }
+.log-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.log-time { font-size: 11px; color: var(--text-light); margin-left: auto; white-space: nowrap; padding-top: 2px; }
+
+/* GROWTH */
+.tab-row { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--card-border); background: #fff; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text-muted); transition: all 0.15s; }
+.tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* MILESTONES */
+.timeline { position: relative; padding-left: 26px; }
+.timeline::before { content: ''; position: absolute; left: 7px; top: 12px; bottom: 12px; width: 2px; background: var(--card-border); }
+.milestone-item { position: relative; margin-bottom: 16px; }
+.milestone-dot { position: absolute; left: -23px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--accent); }
+.milestone-card { padding: 16px 20px; }
+.milestone-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.milestone-name { font-size: 14px; font-weight: 700; }
+.badge { padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; background: var(--accent-light); color: var(--accent-dark); }
+.day-badge { padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; background: #fef3c7; color: #92400e; }
+.milestone-date { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+.milestone-desc { font-size: 13px; color: var(--text-muted); }
+
+/* VACCINATIONS */
+.vacc-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--card-border); }
+.vacc-item:last-child { border-bottom: none; }
+.vacc-name { font-size: 14px; font-weight: 600; }
+.vacc-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.status-badge { padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+.status-done { background: #d1fae5; color: #065f46; }
+.status-due { background: #fef3c7; color: #92400e; }
+
+/* GALLERY */
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.photo-item { aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: var(--bg); position: relative; }
+.photo-item img { width: 100%; height: 100%; object-fit: cover; }
+.photo-del { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.5); color: #fff; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+
+/* INCIDENTS */
+.incident-badge { padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+.incident-injury { background: #fee2e2; color: #991b1b; }
+.incident-allergy { background: #fef3c7; color: #92400e; }
+.incident-medication { background: #ede9fe; color: #5b21b6; }
+.incident-behavior { background: #dbeafe; color: #1e40af; }
+.incident-other { background: #f3f4f6; color: #374151; }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 20px; padding: 28px; width: 430px; max-width: 92vw; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; margin-bottom: 22px; }
+.form-group { margin-bottom: 15px; }
+.form-label { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
+.form-input, .form-select, .form-textarea { width: 100%; border: 1.5px solid var(--card-border); border-radius: 10px; padding: 10px 13px; font-size: 14px; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+.form-textarea { resize: vertical; min-height: 80px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+.del-btn { background: none; border: none; cursor: pointer; color: var(--text-light); font-size: 18px; padding: 0 4px; line-height: 1; transition: color 0.15s; }
+.del-btn:hover { color: var(--danger); }
+
+@media (max-width: 768px) {
+  .sidebar { width: 64px; min-width: 64px; }
+  .sidebar-header { padding: 14px 10px; }
+  .dog-name, .dog-breed, .dog-age-pill, .nav-item span, .nav-section-label { display: none; }
+  .nav-item { justify-content: center; padding: 12px; }
+  .main { margin-left: 64px; padding: 20px 16px; max-width: calc(100vw - 64px); }
+  .bottom-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="dog-avatar" id="sidebarAvatar">🐾</div>
+    <div class="dog-name">Bluey</div>
+    <div class="dog-breed">French Bulldog · Male</div>
+    <div class="dog-age-pill" id="sidebarAge">Loading...</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Main</div>
+    <button class="nav-item active" onclick="showPage('dashboard',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" onclick="showPage('routine',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span>Daily Routine</span>
+    </button>
+    <button class="nav-item" onclick="showPage('intake',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      <span>Meals &amp; Water</span>
+    </button>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Health</div>
+    <button class="nav-item" onclick="showPage('growth',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Growth</span>
+    </button>
+    <button class="nav-item" onclick="showPage('vaccinations',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>Vaccinations</span>
+    </button>
+    <button class="nav-item" onclick="showPage('incidents',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span>Incidents</span>
+    </button>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Life</div>
+    <button class="nav-item" onclick="showPage('milestones',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span>Milestones</span>
+    </button>
+    <button class="nav-item" onclick="showPage('gallery',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <span>Gallery</span>
+    </button>
+  </div>
+  <div class="sidebar-bottom">
+    <button class="nav-item" onclick="backupData()">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Backup Data</span>
+    </button>
+    <button class="nav-item" onclick="document.getElementById('restoreFile').click()">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Restore Backup</span>
+    </button>
+    <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreData(event)" />
+  </div>
+</aside>
+
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="dash-banner">
+      <div class="dash-avatar">🐾</div>
+      <div>
+        <div class="dash-name">Bluey</div>
+        <div class="dash-meta">French Bulldog · Male · Mumbai, India</div>
+        <div class="dash-tags">
+          <span class="dash-tag" id="ageTag">—</span>
+          <span class="dash-tag" id="dayTag">Day —</span>
+        </div>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:#eff6ff">🍖</div>
+        <div class="stat-label">Meals Today</div>
+        <div class="stat-value" id="dashMeals">Not logged</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:#f0fdf4">✅</div>
+        <div class="stat-label">Routine Today</div>
+        <div class="stat-value" id="dashRoutine">0 / 14 done</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:#fef3c7">⚖️</div>
+        <div class="stat-label">Current Weight</div>
+        <div class="stat-value" id="dashWeight">Not measured</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-icon" style="background:#fee2e2">💉</div>
+        <div class="stat-label">Next Vaccine</div>
+        <div class="stat-value" id="dashVaccine">No upcoming</div>
+      </div>
+    </div>
+    <div class="bottom-grid">
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">Recent Incidents</div>
+          <button class="btn-outline" onclick="showPage('incidents',document.querySelector('[onclick*=incidents]'))">View all</button>
+        </div>
+        <div id="dashIncidents"><p style="font-size:13px;color:var(--text-muted)">No incidents — great!</p></div>
+      </div>
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">Latest Milestones</div>
+          <button class="btn-outline" onclick="showPage('milestones',document.querySelector('[onclick*=milestones]'))">View all</button>
+        </div>
+        <div id="dashMilestones">
+          <div class="empty-state" style="padding:16px"><div class="empty-icon">⭐</div><div class="empty-title" style="font-size:13px">No milestones yet</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAILY ROUTINE -->
+  <div id="page-routine" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Daily Routine</div>
+        <div class="page-subtitle">Full daily care checklist — tap each task to mark done</div>
+      </div>
+    </div>
+    <div class="card routine-date-bar">
+      <span class="date-label">Date</span>
+      <input type="date" id="routineDate" onchange="renderRoutine()" />
+      <div class="routine-progress">Done: <span id="routineDoneCount">0</span> / <span id="routineTotalCount">14</span></div>
+    </div>
+    <div class="card" id="routineCard">
+      <div id="routineContent"></div>
+    </div>
+  </div>
+
+  <!-- MEALS & WATER -->
+  <div id="page-intake" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Meals &amp; Water</div>
+        <div class="page-subtitle">Track Bluey's meals, water, and treats</div>
+      </div>
+      <button class="btn-primary" onclick="openModal('intakeModal')">+ Log Entry</button>
+    </div>
+    <div class="card date-bar">
+      <span class="date-label">Date</span>
+      <input type="date" id="intakeDate" onchange="renderIntake()" />
+      <div class="date-stats">
+        <div class="date-stat">Meals: <span id="mealCount">0</span></div>
+        <div class="date-stat">Water: <span id="waterCount">—</span></div>
+        <div class="date-stat">Treats: <span id="treatCount">0</span></div>
+      </div>
+    </div>
+    <div class="card"><div id="intakeList"><div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">Nothing logged</div><div class="empty-sub">Tap Log Entry to add meals, water, or treats</div></div></div></div>
+  </div>
+
+  <!-- GROWTH -->
+  <div id="page-growth" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Growth Tracker</div>
+        <div class="page-subtitle">Monitor weight, height, and neck size</div>
+      </div>
+      <button class="btn-primary" onclick="openModal('growthModal')">+ Add Measurement</button>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="setGrowthTab('weight',this)">Weight</button>
+        <button class="tab-btn" onclick="setGrowthTab('height',this)">Height</button>
+        <button class="tab-btn" onclick="setGrowthTab('neck',this)">Neck</button>
+      </div>
+      <div id="growthChart"><div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No measurements yet</div></div></div>
+    </div>
+    <div class="card"><div class="stat-label" style="margin-bottom:14px">All Records</div><div id="growthHistory"></div></div>
+  </div>
+
+  <!-- VACCINATIONS -->
+  <div id="page-vaccinations" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Vaccinations &amp; Vet</div>
+        <div class="page-subtitle">Track immunizations and appointments</div>
+      </div>
+      <button class="btn-primary" onclick="openModal('vaccModal')">+ Add Record</button>
+    </div>
+    <div class="card"><div class="section-title" style="margin-bottom:16px">History</div><div id="vaccList"><div class="empty-state"><div class="empty-icon">💉</div><div class="empty-title">No records yet</div></div></div></div>
+  </div>
+
+  <!-- INCIDENTS -->
+  <div id="page-incidents" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Health Incidents</div>
+        <div class="page-subtitle">Log injuries, reactions, medications, unusual behaviors</div>
+      </div>
+      <button class="btn-primary" onclick="openModal('incidentModal')">+ Log Incident</button>
+    </div>
+    <div class="card"><div id="incidentList"><div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">No incidents logged</div><div class="empty-sub">Hopefully it stays that way!</div></div></div></div>
+  </div>
+
+  <!-- MILESTONES -->
+  <div id="page-milestones" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Life Milestones</div>
+        <div class="page-subtitle">Bluey's most important moments</div>
+      </div>
+      <button class="btn-primary" onclick="openModal('milestoneModal')">+ Add Milestone</button>
+    </div>
+    <div class="timeline" id="milestoneList"><div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No milestones yet</div></div></div>
+  </div>
+
+  <!-- GALLERY -->
+  <div id="page-gallery" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Photo Gallery</div>
+        <div class="page-subtitle">Bluey's life in pictures</div>
+      </div>
+      <button class="btn-primary" onclick="document.getElementById('photoUpload').click()">+ Add Photo</button>
+      <input type="file" id="photoUpload" accept="image/*" multiple style="display:none" onchange="addPhotos(event)" />
+    </div>
+    <div id="galleryGrid"><div class="card"><div class="empty-state"><div class="empty-icon">📸</div><div class="empty-title">No photos yet</div><div class="empty-sub">Upload your first photo of Bluey!</div></div></div></div>
+  </div>
+</main>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="intakeModal">
+  <div class="modal">
+    <div class="modal-title">Log Entry</div>
+    <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="intakeType"><option>Meal</option><option>Water</option><option>Treat</option></select></div>
+    <div class="form-group"><label class="form-label">Details</label><input class="form-input" id="intakeDetail" placeholder="e.g. Royal Canin dry food, 200g" /></div>
+    <div class="form-group"><label class="form-label">Time</label><input class="form-input" type="time" id="intakeTime" /></div>
+    <div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="intakeNotes" placeholder="Any notes..."></textarea></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('intakeModal')">Cancel</button><button class="btn-primary" onclick="saveIntake()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="growthModal">
+  <div class="modal">
+    <div class="modal-title">Add Measurement</div>
+    <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="growthType"><option value="weight">Weight (kg)</option><option value="height">Shoulder Height (cm)</option><option value="neck">Neck Circumference (cm)</option></select></div>
+    <div class="form-group"><label class="form-label">Value</label><input class="form-input" type="number" id="growthValue" placeholder="e.g. 10.5" step="0.1" /></div>
+    <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="growthDate" /></div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="growthNotes" placeholder="Any notes..." /></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('growthModal')">Cancel</button><button class="btn-primary" onclick="saveGrowth()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="vaccModal">
+  <div class="modal">
+    <div class="modal-title">Add Vaccination / Vet Visit</div>
+    <div class="form-group"><label class="form-label">Vaccine / Visit Name</label><input class="form-input" id="vaccName" placeholder="e.g. Rabies, Annual Checkup" /></div>
+    <div class="form-group"><label class="form-label">Date Given</label><input class="form-input" type="date" id="vaccDate" /></div>
+    <div class="form-group"><label class="form-label">Next Due Date (optional)</label><input class="form-input" type="date" id="vaccNext" /></div>
+    <div class="form-group"><label class="form-label">Vet / Clinic</label><input class="form-input" id="vaccVet" placeholder="e.g. PetCare Mumbai" /></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="vaccNotes" placeholder="Any observations..."></textarea></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('vaccModal')">Cancel</button><button class="btn-primary" onclick="saveVacc()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="incidentModal">
+  <div class="modal">
+    <div class="modal-title">Log Incident</div>
+    <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="incidentType"><option>Injury</option><option>Allergic Reaction</option><option>Medication</option><option>Unusual Behavior</option><option>Other</option></select></div>
+    <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="incidentTitle" placeholder="Brief title" /></div>
+    <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="incidentDate" /></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="incidentDesc" placeholder="Describe what happened..."></textarea></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('incidentModal')">Cancel</button><button class="btn-primary" onclick="saveIncident()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="milestoneModal">
+  <div class="modal">
+    <div class="modal-title">Add Milestone</div>
+    <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="msTitle" placeholder="e.g. First walk, First bath" /></div>
+    <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="msDate" /></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="msDesc" placeholder="Tell the story..."></textarea></div>
+    <div class="form-group"><label class="form-label">Key Milestone?</label><select class="form-select" id="msKey"><option value="yes">Yes — Key milestone</option><option value="no">No — Regular milestone</option></select></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('milestoneModal')">Cancel</button><button class="btn-primary" onclick="saveMilestone()">Save</button></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  DATABASE LAYER — swap save()/load() for cloud
+// ══════════════════════════════════════════════
+const DB_KEY = 'bluey_v2';
+function load() { try { return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); } catch { return {}; } }
+function save() { localStorage.setItem(DB_KEY, JSON.stringify(state)); }
+
+// ══════════════════════════════════════════════
+//  ROUTINE TEMPLATE (from Excel sheet)
+// ══════════════════════════════════════════════
+const ROUTINE = [
+  { id:'brush_am',    label:'Brush Teeth',        icon:'🦷', sub:'Morning',              group:'🌅 Morning' },
+  { id:'homeo_1',     label:'Homeopathy Dose 1',  icon:'💊', sub:'Before breakfast',     group:'🌅 Morning' },
+  { id:'breakfast',   label:'Breakfast',          icon:'🍳', sub:'Morning meal',         group:'🌅 Morning' },
+  { id:'multivit_am', label:'Multivitamin',       icon:'💊', sub:'With breakfast',       group:'🌅 Morning' },
+  { id:'homeo_2',     label:'Homeopathy Dose 2',  icon:'💊', sub:'Before lunch',         group:'☀️ Afternoon' },
+  { id:'lunch',       label:'Lunch',              icon:'🍖', sub:'Afternoon meal',       group:'☀️ Afternoon' },
+  { id:'homeo_3',     label:'Homeopathy Dose 3',  icon:'💊', sub:'Before evening snack', group:'🌆 Evening' },
+  { id:'snack',       label:'Evening Snack',      icon:'🦴', sub:'Evening',              group:'🌆 Evening' },
+  { id:'homeo_4',     label:'Homeopathy Dose 4',  icon:'💊', sub:'Before dinner',        group:'🌆 Evening' },
+  { id:'dinner',      label:'Dinner',             icon:'🍗', sub:'Night meal',           group:'🌙 Night' },
+  { id:'multivit_pm', label:'Multivitamin',       icon:'💊', sub:'With dinner',          group:'🌙 Night' },
+  { id:'brush_pm',    label:'Brush Teeth',        icon:'🦷', sub:'Night',                group:'🌙 Night' },
+  { id:'wipe',        label:'Wipe & Clean',       icon:'🧴', sub:'Wrinkles, ears, paws', group:'🌙 Night' },
+  { id:'bath',        label:'Bath',               icon:'🛁', sub:'2x per week',          group:'🌙 Night' },
+];
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+const DOB = '2023-05-25';
+let state = load();
+if (!state.intake)    state.intake = [];
+if (!state.growth)    state.growth = [];
+if (!state.vacc)      state.vacc = [];
+if (!state.incidents) state.incidents = [];
+if (!state.milestones)state.milestones = [];
+if (!state.photos)    state.photos = [];
+if (!state.routine)   state.routine = {};
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+function today() { return new Date().toISOString().split('T')[0]; }
+function daysSince(d) { return Math.floor((Date.now() - new Date(d)) / 86400000); }
+function formatAge(dob) {
+  const diff = Date.now() - new Date(dob);
+  const m = Math.floor(diff / (1000*60*60*24*30.44));
+  const d = Math.floor((diff % (1000*60*60*24*30.44)) / 86400000);
+  if (m < 1) return d + 'd old';
+  if (m < 12) return m + 'm ' + d + 'd old';
+  return Math.floor(m/12) + 'y ' + (m%12) + 'm old';
+}
+function formatDate(s) {
+  if (!s) return '';
+  return new Date(s).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// ══════════════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════════════
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  ({
+    dashboard: renderDashboard,
+    routine: renderRoutine,
+    intake: () => { if (!document.getElementById('intakeDate').value) document.getElementById('intakeDate').value = today(); renderIntake(); },
+    growth: renderGrowth,
+    vaccinations: renderVacc,
+    incidents: renderIncidents,
+    milestones: renderMilestones,
+    gallery: renderGallery,
+  }[id] || (() => {}))();
+}
+
+// ══════════════════════════════════════════════
+//  MODALS
+// ══════════════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.querySelectorAll('#'+id+' input[type=date]').forEach(i => { if (!i.value) i.value = today(); });
+  const ti = document.querySelector('#'+id+' input[type=time]');
+  if (ti && !ti.value) { const n = new Date(); ti.value = n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0'); }
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); }));
+
+// ══════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════
+function renderDashboard() {
+  document.getElementById('ageTag').textContent = formatAge(DOB);
+  document.getElementById('dayTag').textContent = 'Day ' + daysSince(DOB);
+  document.getElementById('sidebarAge').textContent = formatAge(DOB);
+
+  const t = today();
+  const meals = state.intake.filter(i => i.date===t && i.type==='Meal');
+  document.getElementById('dashMeals').textContent = meals.length ? meals.length+' meal(s)' : 'Not logged';
+
+  const rd = state.routine[t] || {};
+  const done = ROUTINE.filter(r => rd[r.id]).length;
+  document.getElementById('dashRoutine').textContent = done + ' / ' + ROUTINE.length + ' done';
+
+  const wts = state.growth.filter(g => g.type==='weight').sort((a,b) => b.date.localeCompare(a.date));
+  document.getElementById('dashWeight').textContent = wts.length ? wts[0].value+' kg' : 'Not measured';
+
+  const upcoming = state.vacc.filter(v => v.nextDate && v.nextDate>=t).sort((a,b) => a.nextDate.localeCompare(b.nextDate));
+  document.getElementById('dashVaccine').textContent = upcoming.length ? upcoming[0].name+' · '+formatDate(upcoming[0].nextDate) : 'No upcoming';
+
+  const inc = document.getElementById('dashIncidents');
+  inc.innerHTML = !state.incidents.length
+    ? '<p style="font-size:13px;color:var(--text-muted)">No incidents — great!</p>'
+    : state.incidents.slice(0,3).map(i=>`<div class="log-entry"><div class="log-dot" style="background:var(--danger)"></div><div><div class="log-type">${i.title}</div><div class="log-detail">${i.type} · ${formatDate(i.date)}</div></div></div>`).join('');
+
+  const ms = document.getElementById('dashMilestones');
+  ms.innerHTML = !state.milestones.length
+    ? '<div class="empty-state" style="padding:16px"><div class="empty-icon">⭐</div><div class="empty-title" style="font-size:13px">No milestones yet</div></div>'
+    : state.milestones.slice(0,3).map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--card-border)"><span style="color:var(--accent)">●</span><div><div style="font-size:13px;font-weight:600">${m.title}</div><div style="font-size:11px;color:var(--text-muted)">${formatDate(m.date)}</div></div></div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+//  DAILY ROUTINE
+// ══════════════════════════════════════════════
+function renderRoutine() {
+  const el = document.getElementById('routineDate');
+  if (!el.value) el.value = today();
+  const date = el.value;
+  if (!state.routine[date]) state.routine[date] = {};
+  const day = state.routine[date];
+
+  const done = ROUTINE.filter(r => day[r.id]).length;
+  document.getElementById('routineDoneCount').textContent = done;
+  document.getElementById('routineTotalCount').textContent = ROUTINE.length;
+
+  const groups = {};
+  ROUTINE.forEach(r => { if (!groups[r.group]) groups[r.group]=[]; groups[r.group].push(r); });
+
+  document.getElementById('routineContent').innerHTML = Object.entries(groups).map(([g, tasks]) => `
+    <div class="routine-section">
+      <div class="routine-section-title">${g}</div>
+      <div class="routine-grid">
+        ${tasks.map(r => `
+          <div class="routine-item ${day[r.id]?'done':''}" onclick="toggleRoutine('${date}','${r.id}')">
+            <div class="routine-check">${day[r.id]?'<span style="color:#fff;font-weight:800;font-size:12px">✓</span>':''}</div>
+            <div class="routine-item-icon">${r.icon}</div>
+            <div>
+              <div class="routine-item-label">${r.label}</div>
+              <div class="routine-item-sub">${r.sub}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function toggleRoutine(date, id) {
+  if (!state.routine[date]) state.routine[date] = {};
+  state.routine[date][id] = !state.routine[date][id];
+  save(); renderRoutine(); renderDashboard();
+}
+
+// ══════════════════════════════════════════════
+//  INTAKE
+// ══════════════════════════════════════════════
+function saveIntake() {
+  const e = { id:Date.now(), date:document.getElementById('intakeDate').value||today(), type:document.getElementById('intakeType').value, detail:document.getElementById('intakeDetail').value, time:document.getElementById('intakeTime').value, notes:document.getElementById('intakeNotes').value };
+  if (!e.detail) { alert('Please add details'); return; }
+  state.intake.push(e); save(); closeModal('intakeModal');
+  document.getElementById('intakeDetail').value=''; document.getElementById('intakeNotes').value='';
+  renderIntake();
+}
+
+function renderIntake() {
+  const date = document.getElementById('intakeDate').value || today();
+  const entries = state.intake.filter(i => i.date===date);
+  document.getElementById('mealCount').textContent = entries.filter(i=>i.type==='Meal').length;
+  document.getElementById('waterCount').textContent = entries.filter(i=>i.type==='Water').length || '—';
+  document.getElementById('treatCount').textContent = entries.filter(i=>i.type==='Treat').length;
+  const list = document.getElementById('intakeList');
+  if (!entries.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">Nothing logged</div><div class="empty-sub">Tap Log Entry to add meals, water, or treats</div></div>'; return; }
+  const colors = {Meal:'#4f8ef7',Water:'#3b82f6',Treat:'#f59e0b'};
+  list.innerHTML = entries.sort((a,b)=>a.time.localeCompare(b.time)).map(e=>`
+    <div class="log-entry">
+      <div class="log-dot" style="background:${colors[e.type]||'#888'}"></div>
+      <div style="flex:1"><div class="log-type">${e.type} — ${e.detail}</div>${e.notes?`<div class="log-detail">${e.notes}</div>`:''}</div>
+      <div class="log-time">${e.time}</div>
+      <button class="del-btn" onclick="deleteItem('intake',${e.id})">×</button>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+//  GROWTH
+// ══════════════════════════════════════════════
+let growthTab='weight';
+function setGrowthTab(tab,btn) { growthTab=tab; document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderGrowth(); }
+function saveGrowth() {
+  const e = { id:Date.now(), type:document.getElementById('growthType').value, value:parseFloat(document.getElementById('growthValue').value), date:document.getElementById('growthDate').value, notes:document.getElementById('growthNotes').value };
+  if (!e.value||!e.date) { alert('Please fill in value and date'); return; }
+  state.growth.push(e); save(); closeModal('growthModal');
+  document.getElementById('growthValue').value=''; document.getElementById('growthNotes').value='';
+  renderGrowth();
+}
+function renderGrowth() {
+  const units={weight:'kg',height:'cm',neck:'cm'};
+  const filtered=state.growth.filter(g=>g.type===growthTab).sort((a,b)=>a.date.localeCompare(b.date));
+  const chart=document.getElementById('growthChart');
+  if (!filtered.length) { chart.innerHTML='<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No measurements yet</div></div>'; }
+  else {
+    const max=Math.max(...filtered.map(g=>g.value));
+    chart.innerHTML='<div style="display:flex;gap:8px;align-items:flex-end;padding:10px 0">'+filtered.map(g=>{
+      const pct=Math.round((g.value/max)*100);
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:44px">
+        <div style="font-size:11px;font-weight:700;color:var(--accent)">${g.value}${units[growthTab]}</div>
+        <div style="width:100%;background:var(--accent-light);border-radius:6px;height:120px;display:flex;align-items:flex-end">
+          <div style="width:100%;background:var(--accent);border-radius:6px;height:${pct}%"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);text-align:center">${formatDate(g.date)}</div>
+      </div>`;}).join('')+'</div>';
+  }
+  const all=[...state.growth].sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('growthHistory').innerHTML = !all.length
+    ? '<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No records yet</div></div>'
+    : all.map(g=>`<div class="log-entry"><div class="log-dot"></div><div style="flex:1"><div class="log-type">${g.type==='weight'?'Weight':g.type==='height'?'Height':'Neck'} — ${g.value} ${units[g.type]}</div>${g.notes?`<div class="log-detail">${g.notes}</div>`:''}</div><div class="log-time">${formatDate(g.date)}</div><button class="del-btn" onclick="deleteItem('growth',${g.id})">×</button></div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+//  VACCINATIONS
+// ══════════════════════════════════════════════
+function saveVacc() {
+  const e = { id:Date.now(), name:document.getElementById('vaccName').value, date:document.getElementById('vaccDate').value, nextDate:document.getElementById('vaccNext').value, vet:document.getElementById('vaccVet').value, notes:document.getElementById('vaccNotes').value };
+  if (!e.name||!e.date) { alert('Please fill in name and date'); return; }
+  state.vacc.push(e); save(); closeModal('vaccModal');
+  ['vaccName','vaccVet','vaccNotes'].forEach(id=>document.getElementById(id).value=''); document.getElementById('vaccNext').value='';
+  renderVacc();
+}
+function renderVacc() {
+  const list=document.getElementById('vaccList');
+  if (!state.vacc.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">💉</div><div class="empty-title">No records yet</div></div>'; return; }
+  list.innerHTML=[...state.vacc].sort((a,b)=>b.date.localeCompare(a.date)).map(v=>{
+    const isDue=v.nextDate&&v.nextDate>=today();
+    return `<div class="vacc-item"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="vacc-name">${v.name}</div><span class="status-badge ${isDue?'status-due':'status-done'}">${isDue?'Due '+formatDate(v.nextDate):'Done'}</span></div><div class="vacc-detail">${v.vet?v.vet+' · ':''}${formatDate(v.date)}</div>${v.notes?`<div class="vacc-detail" style="margin-top:4px">${v.notes}</div>`:''}</div><button class="del-btn" onclick="deleteItem('vacc',${v.id})">×</button></div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+//  INCIDENTS
+// ══════════════════════════════════════════════
+function saveIncident() {
+  const e = { id:Date.now(), type:document.getElementById('incidentType').value, title:document.getElementById('incidentTitle').value, date:document.getElementById('incidentDate').value, desc:document.getElementById('incidentDesc').value };
+  if (!e.title) { alert('Please add a title'); return; }
+  state.incidents.push(e); save(); closeModal('incidentModal');
+  document.getElementById('incidentTitle').value=''; document.getElementById('incidentDesc').value='';
+  renderIncidents();
+}
+function renderIncidents() {
+  const list=document.getElementById('incidentList');
+  if (!state.incidents.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">No incidents logged</div><div class="empty-sub">Hopefully it stays that way!</div></div>'; return; }
+  const bm={'Injury':'incident-injury','Allergic Reaction':'incident-allergy','Medication':'incident-medication','Unusual Behavior':'incident-behavior','Other':'incident-other'};
+  list.innerHTML=[...state.incidents].sort((a,b)=>b.date.localeCompare(a.date)).map(i=>`
+    <div class="log-entry"><div class="log-dot" style="background:var(--danger)"></div><div style="flex:1">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px"><div class="log-type">${i.title}</div><span class="incident-badge ${bm[i.type]||'incident-other'}">${i.type}</span></div>
+      <div class="log-detail">${formatDate(i.date)}</div>${i.desc?`<div class="log-detail" style="margin-top:3px">${i.desc}</div>`:''}
+    </div><button class="del-btn" onclick="deleteItem('incidents',${i.id})">×</button></div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+//  MILESTONES
+// ══════════════════════════════════════════════
+function saveMilestone() {
+  const e = { id:Date.now(), title:document.getElementById('msTitle').value, date:document.getElementById('msDate').value, desc:document.getElementById('msDesc').value, key:document.getElementById('msKey').value==='yes' };
+  if (!e.title||!e.date) { alert('Please fill in title and date'); return; }
+  state.milestones.push(e); save(); closeModal('milestoneModal');
+  document.getElementById('msTitle').value=''; document.getElementById('msDesc').value='';
+  renderMilestones();
+}
+function renderMilestones() {
+  const list=document.getElementById('milestoneList');
+  if (!state.milestones.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No milestones yet</div></div>'; return; }
+  list.innerHTML=[...state.milestones].sort((a,b)=>a.date.localeCompare(b.date)).map(m=>`
+    <div class="milestone-item"><div class="milestone-dot"></div><div class="card milestone-card">
+      <div class="milestone-title-row"><div class="milestone-name">${m.title}</div>${m.key?'<span class="badge">Key milestone</span>':''}<span class="day-badge">Day ${daysSince(DOB)-daysSince(m.date)}</span></div>
+      <div class="milestone-date">${formatDate(m.date)}</div>${m.desc?`<div class="milestone-desc">${m.desc}</div>`:''}
+      <button class="del-btn" style="font-size:12px;margin-top:8px;color:var(--text-muted)" onclick="deleteItem('milestones',${m.id})">Delete</button>
+    </div></div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+//  GALLERY
+// ══════════════════════════════════════════════
+function addPhotos(e) {
+  Array.from(e.target.files).forEach(file => {
+    const r=new FileReader();
+    r.onload=ev=>{ state.photos.push({id:Date.now()+Math.random(),src:ev.target.result,name:file.name}); save(); renderGallery(); };
+    r.readAsDataURL(file);
+  }); e.target.value='';
+}
+function renderGallery() {
+  const g=document.getElementById('galleryGrid');
+  if (!state.photos.length) { g.innerHTML='<div class="card"><div class="empty-state"><div class="empty-icon">📸</div><div class="empty-title">No photos yet</div><div class="empty-sub">Upload your first photo of Bluey!</div></div></div>'; return; }
+  g.innerHTML='<div class="photo-grid">'+state.photos.map(p=>`<div class="photo-item"><img src="${p.src}" alt="${p.name}" /><button class="photo-del" onclick="deletePhoto(${p.id})">×</button></div>`).join('')+'</div>';
+}
+function deletePhoto(id) { state.photos=state.photos.filter(p=>p.id!==id); save(); renderGallery(); }
+
+// ══════════════════════════════════════════════
+//  DELETE
+// ══════════════════════════════════════════════
+function deleteItem(type,id) {
+  if (!confirm('Delete this entry?')) return;
+  state[type]=state[type].filter(i=>i.id!==id); save();
+  ({intake:renderIntake,growth:renderGrowth,vacc:renderVacc,incidents:renderIncidents,milestones:renderMilestones}[type]||(() => {}))();
+  renderDashboard();
+}
+
+// ══════════════════════════════════════════════
+//  BACKUP / RESTORE
+// ══════════════════════════════════════════════
+function backupData() {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));
+  a.download='bluey-backup-'+today()+'.json'; a.click();
+}
+function restoreData(e) {
+  const file=e.target.files[0]; if (!file) return;
+  const r=new FileReader();
+  r.onload=ev=>{ try { state=JSON.parse(ev.target.result); save(); renderDashboard(); alert('Backup restored!'); } catch { alert('Invalid file'); } };
+  r.readAsText(file);
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+renderDashboard();
+document.getElementById('intakeDate').value = today();
+document.getElementById('routineDate').value = today();
+</script>
+</body>
+</html>
