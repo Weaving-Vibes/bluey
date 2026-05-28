@@ -177,12 +177,192 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .del-btn:hover { color: var(--danger); }
 
 @media (max-width: 768px) {
-  .sidebar { width: 64px; min-width: 64px; }
-  .sidebar-header { padding: 14px 10px; }
-  .dog-name, .dog-breed, .dog-age-pill, .nav-item span, .nav-section-label { display: none; }
-  .nav-item { justify-content: center; padding: 12px; }
-  .main { margin-left: 64px; padding: 20px 16px; max-width: calc(100vw - 64px); }
-  .bottom-grid { grid-template-columns: 1fr; }
+  body { display: block; padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
+  .sidebar {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    max-height: calc(78px + env(safe-area-inset-bottom));
+    top: auto;
+    bottom: 0;
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .sidebar-header,
+  .nav-section-label,
+  .sidebar-bottom { display: none; }
+  .nav-section {
+    display: contents;
+    padding: 0;
+  }
+  .nav-item {
+    min-width: 72px;
+    min-height: 56px;
+    flex: 0 0 72px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 6px;
+    margin: 0 2px;
+    border-radius: 14px;
+    font-size: 10px;
+    line-height: 1.1;
+    text-align: center;
+    white-space: normal;
+  }
+  .nav-item span {
+    display: block;
+    max-width: 62px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nav-icon { width: 19px; height: 19px; }
+  .main {
+    margin-left: 0;
+    max-width: none;
+    width: 100%;
+    min-height: 100svh;
+    padding: 14px 12px 18px;
+  }
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .page-title { font-size: 23px; }
+  .page-subtitle { font-size: 12.5px; }
+  .btn-primary,
+  .btn-outline {
+    min-height: 44px;
+    justify-content: center;
+    border-radius: 12px;
+  }
+  .page-header .btn-primary { width: 100%; }
+  .card {
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .dash-banner {
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px 18px;
+    border-radius: 18px;
+    margin-bottom: 16px;
+  }
+  .dash-avatar {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    font-size: 28px;
+  }
+  .dash-name { font-size: 24px; }
+  .dash-meta { font-size: 12px; }
+  .dash-tags { gap: 6px; }
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .stat-card { padding: 14px; }
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    margin-bottom: 10px;
+  }
+  .stat-value { font-size: 12px; overflow-wrap: anywhere; }
+  .bottom-grid,
+  .routine-grid { grid-template-columns: 1fr; }
+  .section-header {
+    align-items: flex-start;
+    gap: 10px;
+    flex-direction: column;
+  }
+  .routine-date-bar,
+  .date-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+  }
+  .routine-date-bar input[type="date"],
+  .date-bar input[type="date"] {
+    width: 100%;
+    min-height: 42px;
+    font-size: 16px;
+  }
+  .routine-progress,
+  .date-stats {
+    margin-left: 0;
+    width: 100%;
+  }
+  .date-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .date-stat {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 8px;
+    text-align: center;
+  }
+  .routine-item {
+    min-height: 58px;
+    padding: 12px;
+  }
+  .tab-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .tab-btn {
+    flex: 1 0 auto;
+    min-height: 40px;
+  }
+  .log-entry,
+  .vacc-item {
+    gap: 10px;
+  }
+  .log-time { margin-left: 0; }
+  .photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .timeline { padding-left: 20px; }
+  .milestone-dot { left: -20px; }
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 12px;
+  }
+  .modal {
+    width: 100%;
+    max-width: none;
+    max-height: 86svh;
+    border-radius: 20px 20px 14px 14px;
+    padding: 20px;
+  }
+  .form-input,
+  .form-select,
+  .form-textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .main { padding-left: 10px; padding-right: 10px; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .nav-item {
+    min-width: 66px;
+    flex-basis: 66px;
+  }
 }
 </style>
 </head>
