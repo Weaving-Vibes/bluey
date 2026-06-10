@@ -670,15 +670,13 @@ function formatDate(s) {
 // Normalise any date value → YYYY-MM-DD string for comparisons
 function normDate(s) {
   if (!s) return '';
-  const match = String(s).match(/Date\((\d+),(\d+),(\d+)\)/);
-  if (match) {
-    const y = match[1], m = String(+match[2]+1).padStart(2,'0'), d = String(match[3]).padStart(2,'0');
-    return `${y}-${m}-${d}`;
-  }
-  // Already YYYY-MM-DD or similar
   const d = new Date(s);
-  if (isNaN(d)) return String(s).trim();
-  return d.toISOString().split('T')[0];
+  if (!isNaN(d.getTime())) {
+    // Use UTC+5:30 offset to avoid date shifting
+    const ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+    return ist.toISOString().split('T')[0];
+  }
+  return String(s).trim();
 }
 function isDone(val) {
   return val === 'TRUE' || val === 'true' || val === '1' || val === true || val === 1;
