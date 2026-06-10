@@ -1,8 +1,7 @@
 // api/gas.js — Vercel Serverless Proxy for Google Apps Script
 // Forwards all query params to GAS and returns the response with CORS headers.
 
-const GAS_URL =
-  'https://script.google.com/macros/s/AKfycbzhgXMf04FQ8H4RfHzOJ87h8RKk_VNgEAiOFdwBBoKBYEpBs0XTMOAh6yA8ZgGOSQOm/exec';
+const GAS_URL = process.env.GAS_URL;
 
 export default async function handler(req, res) {
   // Allow all origins (your Vercel domain will call this)
