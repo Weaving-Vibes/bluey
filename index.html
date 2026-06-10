@@ -52,11 +52,27 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 /* BUTTONS */
 .btn-primary { background: var(--accent); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap; font-family: 'DM Sans', sans-serif; }
 .btn-primary:hover { background: var(--accent-dark); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .btn-outline { background: #fff; color: var(--text); border: 1px solid var(--card-border); padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s; }
 .btn-outline:hover { background: var(--bg); }
 
 /* CARDS */
 .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; }
+
+/* LOADING */
+.loading-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); z-index: 9999; display: none; animation: loadpulse 1s ease-in-out infinite; }
+@keyframes loadpulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.loading-bar.active { display: block; }
+.skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.spin { display: inline-block; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* TOAST */
+.toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a2e; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 13px; font-weight: 500; z-index: 9999; display: none; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+.toast.show { display: block; animation: slideup 0.2s ease; }
+.toast.error { background: var(--danger); }
+@keyframes slideup { from{transform:translateY(10px);opacity:0} to{transform:translateY(0);opacity:1} }
 
 /* EMPTY STATE */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 8px; }
@@ -100,8 +116,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .routine-item.done .routine-check { background: var(--success); border-color: var(--success); }
 .routine-item.done .routine-check::after { opacity: 1; }
 .routine-item.done .routine-item-label { color: var(--text-muted); text-decoration: line-through; }
+.routine-item.saving { opacity: 0.6; pointer-events: none; }
 .routine-check { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--card-border); background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; position: relative; }
-.routine-check::after { content: 'checkmark'; font-size: 0; color: #fff; font-weight: 700; opacity: 0; transition: opacity 0.15s; }
 .routine-item.done .routine-check::before { content: '✓'; font-size: 12px; color: #fff; font-weight: 800; }
 .routine-item-icon { font-size: 16px; flex-shrink: 0; }
 .routine-item-label { font-size: 13px; font-weight: 500; color: var(--text); transition: all 0.15s; }
@@ -178,195 +194,61 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 
 @media (max-width: 768px) {
   body { display: block; padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
-  .sidebar {
-    width: 100%;
-    min-width: 0;
-    height: auto;
-    max-height: calc(78px + env(safe-area-inset-bottom));
-    top: auto;
-    bottom: 0;
-    flex-direction: row;
-    align-items: stretch;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
-    border-top: 1px solid rgba(255,255,255,0.08);
-  }
-  .sidebar-header,
-  .nav-section-label,
-  .sidebar-bottom { display: none; }
-  .nav-section {
-    display: contents;
-    padding: 0;
-  }
-  .nav-item {
-    min-width: 72px;
-    min-height: 56px;
-    flex: 0 0 72px;
-    flex-direction: column;
-    justify-content: center;
-    gap: 5px;
-    padding: 7px 6px;
-    margin: 0 2px;
-    border-radius: 14px;
-    font-size: 10px;
-    line-height: 1.1;
-    text-align: center;
-    white-space: normal;
-  }
-  .nav-item span {
-    display: block;
-    max-width: 62px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  .sidebar { width: 100%; min-width: 0; height: auto; max-height: calc(78px + env(safe-area-inset-bottom)); top: auto; bottom: 0; flex-direction: row; align-items: stretch; overflow-x: auto; overflow-y: hidden; padding: 7px 8px calc(7px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(255,255,255,0.08); }
+  .sidebar-header, .nav-section-label, .sidebar-bottom { display: none; }
+  .nav-section { display: contents; padding: 0; }
+  .nav-item { min-width: 72px; min-height: 56px; flex: 0 0 72px; flex-direction: column; justify-content: center; gap: 5px; padding: 7px 6px; margin: 0 2px; border-radius: 14px; font-size: 10px; line-height: 1.1; text-align: center; white-space: normal; }
+  .nav-item span { display: block; max-width: 62px; overflow: hidden; text-overflow: ellipsis; }
   .nav-icon { width: 19px; height: 19px; }
-  .main {
-    margin-left: 0;
-    max-width: none;
-    width: 100%;
-    min-height: 100svh;
-    padding: 14px 12px 18px;
-  }
-  .page-header {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
+  .main { margin-left: 0; max-width: none; width: 100%; min-height: 100svh; padding: 14px 12px 18px; }
+  .page-header { align-items: stretch; flex-direction: column; gap: 12px; margin-bottom: 16px; }
   .page-title { font-size: 23px; }
   .page-subtitle { font-size: 12.5px; }
-  .btn-primary,
-  .btn-outline {
-    min-height: 44px;
-    justify-content: center;
-    border-radius: 12px;
-  }
+  .btn-primary, .btn-outline { min-height: 44px; justify-content: center; border-radius: 12px; }
   .page-header .btn-primary { width: 100%; }
-  .card {
-    border-radius: 14px;
-    padding: 16px;
-  }
-  .dash-banner {
-    align-items: flex-start;
-    gap: 14px;
-    padding: 20px 18px;
-    border-radius: 18px;
-    margin-bottom: 16px;
-  }
-  .dash-avatar {
-    width: 58px;
-    height: 58px;
-    border-radius: 16px;
-    font-size: 28px;
-  }
+  .card { border-radius: 14px; padding: 16px; }
+  .dash-banner { align-items: flex-start; gap: 14px; padding: 20px 18px; border-radius: 18px; margin-bottom: 16px; }
+  .dash-avatar { width: 58px; height: 58px; border-radius: 16px; font-size: 28px; }
   .dash-name { font-size: 24px; }
   .dash-meta { font-size: 12px; }
   .dash-tags { gap: 6px; }
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 14px;
-  }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
   .stat-card { padding: 14px; }
-  .stat-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
-    margin-bottom: 10px;
-  }
+  .stat-icon { width: 32px; height: 32px; border-radius: 9px; margin-bottom: 10px; }
   .stat-value { font-size: 12px; overflow-wrap: anywhere; }
-  .bottom-grid,
-  .routine-grid { grid-template-columns: 1fr; }
-  .section-header {
-    align-items: flex-start;
-    gap: 10px;
-    flex-direction: column;
-  }
-  .routine-date-bar,
-  .date-bar {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 10px;
-    padding: 14px;
-  }
-  .routine-date-bar input[type="date"],
-  .date-bar input[type="date"] {
-    width: 100%;
-    min-height: 42px;
-    font-size: 16px;
-  }
-  .routine-progress,
-  .date-stats {
-    margin-left: 0;
-    width: 100%;
-  }
-  .date-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-  .date-stat {
-    background: var(--bg);
-    border-radius: 10px;
-    padding: 8px;
-    text-align: center;
-  }
-  .routine-item {
-    min-height: 58px;
-    padding: 12px;
-  }
-  .tab-row {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-  .tab-btn {
-    flex: 1 0 auto;
-    min-height: 40px;
-  }
-  .log-entry,
-  .vacc-item {
-    gap: 10px;
-  }
+  .bottom-grid, .routine-grid { grid-template-columns: 1fr; }
+  .section-header { align-items: flex-start; gap: 10px; flex-direction: column; }
+  .routine-date-bar, .date-bar { align-items: stretch; flex-direction: column; gap: 10px; padding: 14px; }
+  .routine-date-bar input[type="date"], .date-bar input[type="date"] { width: 100%; min-height: 42px; font-size: 16px; }
+  .routine-progress, .date-stats { margin-left: 0; width: 100%; }
+  .date-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .date-stat { background: var(--bg); border-radius: 10px; padding: 8px; text-align: center; }
+  .routine-item { min-height: 58px; padding: 12px; }
+  .tab-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .tab-btn { flex: 1 0 auto; min-height: 40px; }
+  .log-entry, .vacc-item { gap: 10px; }
   .log-time { margin-left: 0; }
   .photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .timeline { padding-left: 20px; }
   .milestone-dot { left: -20px; }
-  .modal-overlay {
-    align-items: flex-end;
-    padding: 12px;
-  }
-  .modal {
-    width: 100%;
-    max-width: none;
-    max-height: 86svh;
-    border-radius: 20px 20px 14px 14px;
-    padding: 20px;
-  }
-  .form-input,
-  .form-select,
-  .form-textarea {
-    min-height: 44px;
-    font-size: 16px;
-  }
-  .modal-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
+  .modal-overlay { align-items: flex-end; padding: 12px; }
+  .modal { width: 100%; max-width: none; max-height: 86svh; border-radius: 20px 20px 14px 14px; padding: 20px; }
+  .form-input, .form-select, .form-textarea { min-height: 44px; font-size: 16px; }
+  .modal-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .toast { bottom: calc(90px + env(safe-area-inset-bottom)); right: 12px; left: 12px; text-align: center; }
 }
 
 @media (max-width: 380px) {
   .main { padding-left: 10px; padding-right: 10px; }
   .stats-grid { grid-template-columns: 1fr; }
-  .nav-item {
-    min-width: 66px;
-    flex-basis: 66px;
-  }
+  .nav-item { min-width: 66px; flex-basis: 66px; }
 }
 </style>
 </head>
 <body>
+
+<div class="loading-bar" id="loadingBar"></div>
+<div class="toast" id="toast"></div>
 
 <aside class="sidebar">
   <div class="sidebar-header">
@@ -421,11 +303,6 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span>Backup Data</span>
     </button>
-    <button class="nav-item" onclick="document.getElementById('restoreFile').click()">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span>Restore Backup</span>
-    </button>
-    <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreData(event)" />
   </div>
 </aside>
 
@@ -448,22 +325,22 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
       <div class="card stat-card">
         <div class="stat-icon" style="background:#eff6ff">🍖</div>
         <div class="stat-label">Meals Today</div>
-        <div class="stat-value" id="dashMeals">Not logged</div>
+        <div class="stat-value" id="dashMeals">Loading…</div>
       </div>
       <div class="card stat-card">
         <div class="stat-icon" style="background:#f0fdf4">✅</div>
         <div class="stat-label">Routine Today</div>
-        <div class="stat-value" id="dashRoutine">0 / 14 done</div>
+        <div class="stat-value" id="dashRoutine">Loading…</div>
       </div>
       <div class="card stat-card">
         <div class="stat-icon" style="background:#fef3c7">⚖️</div>
         <div class="stat-label">Current Weight</div>
-        <div class="stat-value" id="dashWeight">Not measured</div>
+        <div class="stat-value" id="dashWeight">Loading…</div>
       </div>
       <div class="card stat-card">
         <div class="stat-icon" style="background:#fee2e2">💉</div>
         <div class="stat-label">Next Vaccine</div>
-        <div class="stat-value" id="dashVaccine">No upcoming</div>
+        <div class="stat-value" id="dashVaccine">Loading…</div>
       </div>
     </div>
     <div class="bottom-grid">
@@ -472,16 +349,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
           <div class="section-title">Recent Incidents</div>
           <button class="btn-outline" onclick="showPage('incidents',document.querySelector('[onclick*=incidents]'))">View all</button>
         </div>
-        <div id="dashIncidents"><p style="font-size:13px;color:var(--text-muted)">No incidents — great!</p></div>
+        <div id="dashIncidents"><div style="height:40px" class="skeleton"></div></div>
       </div>
       <div class="card">
         <div class="section-header">
           <div class="section-title">Latest Milestones</div>
           <button class="btn-outline" onclick="showPage('milestones',document.querySelector('[onclick*=milestones]'))">View all</button>
         </div>
-        <div id="dashMilestones">
-          <div class="empty-state" style="padding:16px"><div class="empty-icon">⭐</div><div class="empty-title" style="font-size:13px">No milestones yet</div></div>
-        </div>
+        <div id="dashMilestones"><div style="height:40px" class="skeleton"></div></div>
       </div>
     </div>
   </div>
@@ -500,7 +375,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
       <div class="routine-progress">Done: <span id="routineDoneCount">0</span> / <span id="routineTotalCount">14</span></div>
     </div>
     <div class="card" id="routineCard">
-      <div id="routineContent"></div>
+      <div id="routineContent"><div style="height:200px" class="skeleton"></div></div>
     </div>
   </div>
 
@@ -603,7 +478,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     <div class="form-group"><label class="form-label">Details</label><input class="form-input" id="intakeDetail" placeholder="e.g. Royal Canin dry food, 200g" /></div>
     <div class="form-group"><label class="form-label">Time</label><input class="form-input" type="time" id="intakeTime" /></div>
     <div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="intakeNotes" placeholder="Any notes..."></textarea></div>
-    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('intakeModal')">Cancel</button><button class="btn-primary" onclick="saveIntake()">Save</button></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('intakeModal')">Cancel</button><button class="btn-primary" id="intakeSaveBtn" onclick="saveIntake()">Save</button></div>
   </div>
 </div>
 
@@ -614,7 +489,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     <div class="form-group"><label class="form-label">Value</label><input class="form-input" type="number" id="growthValue" placeholder="e.g. 10.5" step="0.1" /></div>
     <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="growthDate" /></div>
     <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="growthNotes" placeholder="Any notes..." /></div>
-    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('growthModal')">Cancel</button><button class="btn-primary" onclick="saveGrowth()">Save</button></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('growthModal')">Cancel</button><button class="btn-primary" id="growthSaveBtn" onclick="saveGrowth()">Save</button></div>
   </div>
 </div>
 
@@ -626,7 +501,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     <div class="form-group"><label class="form-label">Next Due Date (optional)</label><input class="form-input" type="date" id="vaccNext" /></div>
     <div class="form-group"><label class="form-label">Vet / Clinic</label><input class="form-input" id="vaccVet" placeholder="e.g. PetCare Mumbai" /></div>
     <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="vaccNotes" placeholder="Any observations..."></textarea></div>
-    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('vaccModal')">Cancel</button><button class="btn-primary" onclick="saveVacc()">Save</button></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('vaccModal')">Cancel</button><button class="btn-primary" id="vaccSaveBtn" onclick="saveVacc()">Save</button></div>
   </div>
 </div>
 
@@ -637,7 +512,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="incidentTitle" placeholder="Brief title" /></div>
     <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="incidentDate" /></div>
     <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="incidentDesc" placeholder="Describe what happened..."></textarea></div>
-    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('incidentModal')">Cancel</button><button class="btn-primary" onclick="saveIncident()">Save</button></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('incidentModal')">Cancel</button><button class="btn-primary" id="incidentSaveBtn" onclick="saveIncident()">Save</button></div>
   </div>
 </div>
 
@@ -648,20 +523,98 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
     <div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="msDate" /></div>
     <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="msDesc" placeholder="Tell the story..."></textarea></div>
     <div class="form-group"><label class="form-label">Key Milestone?</label><select class="form-select" id="msKey"><option value="yes">Yes — Key milestone</option><option value="no">No — Regular milestone</option></select></div>
-    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('milestoneModal')">Cancel</button><button class="btn-primary" onclick="saveMilestone()">Save</button></div>
+    <div class="modal-actions"><button class="btn-outline" onclick="closeModal('milestoneModal')">Cancel</button><button class="btn-primary" id="msSaveBtn" onclick="saveMilestone()">Save</button></div>
   </div>
 </div>
 
 <script>
 // ══════════════════════════════════════════════
-//  DATABASE LAYER — swap save()/load() for cloud
+//  CONFIG — swap this URL for your deployed Apps Script endpoint
 // ══════════════════════════════════════════════
-const DB_KEY = 'bluey_v2';
-function load() { try { return JSON.parse(localStorage.getItem(DB_KEY) || '{}'); } catch { return {}; } }
-function save() { localStorage.setItem(DB_KEY, JSON.stringify(state)); }
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwG9ESJ42IZXsSgU0FqRLU8wOCMbff2VA743ppskGX4f_2hI2mBG_26iu8F0SZPrLUB/exec';
+
+// Sheet name mapping (matches your actual tab names in the "bluey" spreadsheet)
+const SHEETS = {
+  intake:     'Intake',
+  growth:     'Growth',
+  vacc:       'Vaccinations',
+  incidents:  'Incidents',
+  milestones: 'Milestones',
+  routine:    'Routine',
+  photos:     'Photos',
+};
 
 // ══════════════════════════════════════════════
-//  ROUTINE TEMPLATE (from Excel sheet)
+//  API LAYER — all calls go through here
+// ══════════════════════════════════════════════
+async function apiRead(sheet) {
+  const url = `${GAS_URL}?action=read&sheet=${encodeURIComponent(sheet)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data; // array of objects
+}
+
+async function apiAppend(sheet, row) {
+  const url = `${GAS_URL}?action=append&sheet=${encodeURIComponent(sheet)}&row=${encodeURIComponent(JSON.stringify(row))}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+async function apiDelete(sheet, id) {
+  const url = `${GAS_URL}?action=delete&sheet=${encodeURIComponent(sheet)}&id=${encodeURIComponent(id)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+async function apiUpsertRoutine(taskData) {
+  const url = `${GAS_URL}?action=upsert_routine&sheet=${encodeURIComponent(SHEETS.routine)}&data=${encodeURIComponent(JSON.stringify(taskData))}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+// ══════════════════════════════════════════════
+//  IN-MEMORY CACHE — refreshed on page navigate
+// ══════════════════════════════════════════════
+const cache = {
+  intake: null, growth: null, vacc: null,
+  incidents: null, milestones: null, routine: null, photos: null
+};
+
+async function loadSheet(key) {
+  cache[key] = await apiRead(SHEETS[key]);
+  return cache[key];
+}
+
+// ══════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════
+function setLoading(on) {
+  document.getElementById('loadingBar').classList.toggle('active', on);
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+function setSaving(btnId, saving) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = saving;
+  btn.textContent = saving ? '⏳ Saving…' : 'Save';
+}
+
+// ══════════════════════════════════════════════
+//  ROUTINE TEMPLATE
 // ══════════════════════════════════════════════
 const ROUTINE = [
   { id:'brush_am',    label:'Brush Teeth',        icon:'🦷', sub:'Morning',              group:'🌅 Morning' },
@@ -681,21 +634,9 @@ const ROUTINE = [
 ];
 
 // ══════════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════════
-const DOB = '2023-05-25';
-let state = load();
-if (!state.intake)    state.intake = [];
-if (!state.growth)    state.growth = [];
-if (!state.vacc)      state.vacc = [];
-if (!state.incidents) state.incidents = [];
-if (!state.milestones)state.milestones = [];
-if (!state.photos)    state.photos = [];
-if (!state.routine)   state.routine = {};
-
-// ══════════════════════════════════════════════
 //  HELPERS
 // ══════════════════════════════════════════════
+const DOB = '2023-05-25';
 function today() { return new Date().toISOString().split('T')[0]; }
 function daysSince(d) { return Math.floor((Date.now() - new Date(d)) / 86400000); }
 function formatAge(dob) {
@@ -710,6 +651,7 @@ function formatDate(s) {
   if (!s) return '';
   return new Date(s).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
 }
+function uid() { return Date.now() + Math.floor(Math.random()*10000); }
 
 // ══════════════════════════════════════════════
 //  NAV
@@ -720,14 +662,14 @@ function showPage(id, btn) {
   document.getElementById('page-' + id).classList.add('active');
   if (btn) btn.classList.add('active');
   ({
-    dashboard: renderDashboard,
-    routine: renderRoutine,
-    intake: () => { if (!document.getElementById('intakeDate').value) document.getElementById('intakeDate').value = today(); renderIntake(); },
-    growth: renderGrowth,
+    dashboard:    renderDashboard,
+    routine:      renderRoutine,
+    intake:       () => { if (!document.getElementById('intakeDate').value) document.getElementById('intakeDate').value = today(); renderIntake(); },
+    growth:       renderGrowth,
     vaccinations: renderVacc,
-    incidents: renderIncidents,
-    milestones: renderMilestones,
-    gallery: renderGallery,
+    incidents:    renderIncidents,
+    milestones:   renderMilestones,
+    gallery:      renderGallery,
   }[id] || (() => {}))();
 }
 
@@ -746,249 +688,482 @@ document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('cli
 // ══════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════
-function renderDashboard() {
+async function renderDashboard() {
   document.getElementById('ageTag').textContent = formatAge(DOB);
   document.getElementById('dayTag').textContent = 'Day ' + daysSince(DOB);
   document.getElementById('sidebarAge').textContent = formatAge(DOB);
 
-  const t = today();
-  const meals = state.intake.filter(i => i.date===t && i.type==='Meal');
-  document.getElementById('dashMeals').textContent = meals.length ? meals.length+' meal(s)' : 'Not logged';
+  setLoading(true);
+  try {
+    const [intakeData, growthData, vaccData, incData, msData, routineData] = await Promise.all([
+      loadSheet('intake'), loadSheet('growth'), loadSheet('vacc'),
+      loadSheet('incidents'), loadSheet('milestones'), loadSheet('routine')
+    ]);
 
-  const rd = state.routine[t] || {};
-  const done = ROUTINE.filter(r => rd[r.id]).length;
-  document.getElementById('dashRoutine').textContent = done + ' / ' + ROUTINE.length + ' done';
+    const t = today();
 
-  const wts = state.growth.filter(g => g.type==='weight').sort((a,b) => b.date.localeCompare(a.date));
-  document.getElementById('dashWeight').textContent = wts.length ? wts[0].value+' kg' : 'Not measured';
+    // Meals today
+    const meals = intakeData.filter(i => i.date === t && i.type === 'Meal');
+    document.getElementById('dashMeals').textContent = meals.length ? meals.length + ' meal(s)' : 'Not logged';
 
-  const upcoming = state.vacc.filter(v => v.nextDate && v.nextDate>=t).sort((a,b) => a.nextDate.localeCompare(b.nextDate));
-  document.getElementById('dashVaccine').textContent = upcoming.length ? upcoming[0].name+' · '+formatDate(upcoming[0].nextDate) : 'No upcoming';
+    // Routine today
+    const todayRoutine = routineData.filter(r => r.date === t);
+    const done = todayRoutine.filter(r => r.done === true || r.done === 'TRUE' || r.done === '1').length;
+    document.getElementById('dashRoutine').textContent = done + ' / ' + ROUTINE.length + ' done';
 
-  const inc = document.getElementById('dashIncidents');
-  inc.innerHTML = !state.incidents.length
-    ? '<p style="font-size:13px;color:var(--text-muted)">No incidents — great!</p>'
-    : state.incidents.slice(0,3).map(i=>`<div class="log-entry"><div class="log-dot" style="background:var(--danger)"></div><div><div class="log-type">${i.title}</div><div class="log-detail">${i.type} · ${formatDate(i.date)}</div></div></div>`).join('');
+    // Weight
+    const wts = growthData.filter(g => g.type === 'weight').sort((a,b) => b.date.localeCompare(a.date));
+    document.getElementById('dashWeight').textContent = wts.length ? wts[0].value + ' kg' : 'Not measured';
 
-  const ms = document.getElementById('dashMilestones');
-  ms.innerHTML = !state.milestones.length
-    ? '<div class="empty-state" style="padding:16px"><div class="empty-icon">⭐</div><div class="empty-title" style="font-size:13px">No milestones yet</div></div>'
-    : state.milestones.slice(0,3).map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--card-border)"><span style="color:var(--accent)">●</span><div><div style="font-size:13px;font-weight:600">${m.title}</div><div style="font-size:11px;color:var(--text-muted)">${formatDate(m.date)}</div></div></div>`).join('');
+    // Next vaccine
+    const upcoming = vaccData.filter(v => v.nextDate && v.nextDate >= t).sort((a,b) => a.nextDate.localeCompare(b.nextDate));
+    document.getElementById('dashVaccine').textContent = upcoming.length ? upcoming[0].name + ' · ' + formatDate(upcoming[0].nextDate) : 'No upcoming';
+
+    // Incidents
+    const inc = document.getElementById('dashIncidents');
+    inc.innerHTML = !incData.length
+      ? '<p style="font-size:13px;color:var(--text-muted)">No incidents — great!</p>'
+      : incData.slice(0,3).map(i=>`<div class="log-entry"><div class="log-dot" style="background:var(--danger)"></div><div><div class="log-type">${i.title}</div><div class="log-detail">${i.type} · ${formatDate(i.date)}</div></div></div>`).join('');
+
+    // Milestones
+    const ms = document.getElementById('dashMilestones');
+    ms.innerHTML = !msData.length
+      ? '<div class="empty-state" style="padding:16px"><div class="empty-icon">⭐</div><div class="empty-title" style="font-size:13px">No milestones yet</div></div>'
+      : msData.slice(0,3).map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--card-border)"><span style="color:var(--accent)">●</span><div><div style="font-size:13px;font-weight:600">${m.title}</div><div style="font-size:11px;color:var(--text-muted)">${formatDate(m.date)}</div></div></div>`).join('');
+
+  } catch(err) {
+    showToast('Failed to load dashboard: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════
 //  DAILY ROUTINE
 // ══════════════════════════════════════════════
-function renderRoutine() {
+async function renderRoutine() {
   const el = document.getElementById('routineDate');
   if (!el.value) el.value = today();
   const date = el.value;
-  if (!state.routine[date]) state.routine[date] = {};
-  const day = state.routine[date];
 
-  const done = ROUTINE.filter(r => day[r.id]).length;
-  document.getElementById('routineDoneCount').textContent = done;
-  document.getElementById('routineTotalCount').textContent = ROUTINE.length;
+  document.getElementById('routineContent').innerHTML = '<div style="height:200px" class="skeleton"></div>';
+  setLoading(true);
+  try {
+    const rows = await loadSheet('routine');
+    // Build a map: taskId → done boolean for this date
+    const dayMap = {};
+    rows.filter(r => r.date === date).forEach(r => {
+      dayMap[r.taskId] = (r.done === true || r.done === 'TRUE' || r.done === '1' || r.done === 1);
+    });
 
-  const groups = {};
-  ROUTINE.forEach(r => { if (!groups[r.group]) groups[r.group]=[]; groups[r.group].push(r); });
+    const doneCount = ROUTINE.filter(r => dayMap[r.id]).length;
+    document.getElementById('routineDoneCount').textContent = doneCount;
+    document.getElementById('routineTotalCount').textContent = ROUTINE.length;
 
-  document.getElementById('routineContent').innerHTML = Object.entries(groups).map(([g, tasks]) => `
-    <div class="routine-section">
-      <div class="routine-section-title">${g}</div>
-      <div class="routine-grid">
-        ${tasks.map(r => `
-          <div class="routine-item ${day[r.id]?'done':''}" onclick="toggleRoutine('${date}','${r.id}')">
-            <div class="routine-check">${day[r.id]?'<span style="color:#fff;font-weight:800;font-size:12px">✓</span>':''}</div>
-            <div class="routine-item-icon">${r.icon}</div>
-            <div>
-              <div class="routine-item-label">${r.label}</div>
-              <div class="routine-item-sub">${r.sub}</div>
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
+    const groups = {};
+    ROUTINE.forEach(r => { if (!groups[r.group]) groups[r.group]=[]; groups[r.group].push(r); });
+
+    document.getElementById('routineContent').innerHTML = Object.entries(groups).map(([g, tasks]) => `
+      <div class="routine-section">
+        <div class="routine-section-title">${g}</div>
+        <div class="routine-grid">
+          ${tasks.map(r => `
+            <div class="routine-item ${dayMap[r.id] ? 'done' : ''}" id="ri-${r.id}" onclick="toggleRoutine('${date}','${r.id}')">
+              <div class="routine-check">${dayMap[r.id] ? '<span style="color:#fff;font-weight:800;font-size:12px">✓</span>' : ''}</div>
+              <div class="routine-item-icon">${r.icon}</div>
+              <div>
+                <div class="routine-item-label">${r.label}</div>
+                <div class="routine-item-sub">${r.sub}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  } catch(err) {
+    showToast('Failed to load routine: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
 
-function toggleRoutine(date, id) {
-  if (!state.routine[date]) state.routine[date] = {};
-  state.routine[date][id] = !state.routine[date][id];
-  save(); renderRoutine(); renderDashboard();
+async function toggleRoutine(date, taskId) {
+  const el = document.getElementById('ri-' + taskId);
+  if (!el) return;
+  const isDone = el.classList.contains('done');
+  const newDone = !isDone;
+
+  // Optimistic UI update
+  el.classList.toggle('done', newDone);
+  el.classList.add('saving');
+
+  // Update cache optimistically
+  if (cache.routine) {
+    const existing = cache.routine.find(r => r.date === date && r.taskId === taskId);
+    if (existing) existing.done = newDone ? 'TRUE' : 'FALSE';
+    else cache.routine.push({ date, taskId, done: newDone ? 'TRUE' : 'FALSE' });
+  }
+
+  // Update count
+  const doneCount = ROUTINE.filter(r => {
+    const cacheRow = cache.routine ? cache.routine.find(x => x.date === date && x.taskId === r.id) : null;
+    return cacheRow && (cacheRow.done === true || cacheRow.done === 'TRUE' || cacheRow.done === '1');
+  }).length;
+  document.getElementById('routineDoneCount').textContent = doneCount;
+
+  try {
+    await apiUpsertRoutine({ date, taskId, done: newDone ? 'TRUE' : 'FALSE' });
+  } catch(err) {
+    // Revert on failure
+    el.classList.toggle('done', isDone);
+    showToast('Save failed — try again', true);
+  } finally {
+    el.classList.remove('saving');
+  }
 }
 
 // ══════════════════════════════════════════════
 //  INTAKE
 // ══════════════════════════════════════════════
-function saveIntake() {
-  const e = { id:Date.now(), date:document.getElementById('intakeDate').value||today(), type:document.getElementById('intakeType').value, detail:document.getElementById('intakeDetail').value, time:document.getElementById('intakeTime').value, notes:document.getElementById('intakeNotes').value };
-  if (!e.detail) { alert('Please add details'); return; }
-  state.intake.push(e); save(); closeModal('intakeModal');
-  document.getElementById('intakeDetail').value=''; document.getElementById('intakeNotes').value='';
-  renderIntake();
+async function saveIntake() {
+  const detail = document.getElementById('intakeDetail').value.trim();
+  if (!detail) { showToast('Please add details', true); return; }
+  const e = {
+    id: uid(),
+    date: document.getElementById('intakeDate').value || today(),
+    type: document.getElementById('intakeType').value,
+    detail,
+    time: document.getElementById('intakeTime').value,
+    notes: document.getElementById('intakeNotes').value,
+  };
+  setSaving('intakeSaveBtn', true);
+  try {
+    await apiAppend(SHEETS.intake, e);
+    if (cache.intake) cache.intake.push(e);
+    closeModal('intakeModal');
+    document.getElementById('intakeDetail').value = '';
+    document.getElementById('intakeNotes').value = '';
+    showToast('Entry saved ✓');
+    renderIntake();
+  } catch(err) {
+    showToast('Save failed: ' + err.message, true);
+  } finally {
+    setSaving('intakeSaveBtn', false);
+  }
 }
 
-function renderIntake() {
+async function renderIntake() {
   const date = document.getElementById('intakeDate').value || today();
-  const entries = state.intake.filter(i => i.date===date);
-  document.getElementById('mealCount').textContent = entries.filter(i=>i.type==='Meal').length;
-  document.getElementById('waterCount').textContent = entries.filter(i=>i.type==='Water').length || '—';
-  document.getElementById('treatCount').textContent = entries.filter(i=>i.type==='Treat').length;
-  const list = document.getElementById('intakeList');
-  if (!entries.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">Nothing logged</div><div class="empty-sub">Tap Log Entry to add meals, water, or treats</div></div>'; return; }
-  const colors = {Meal:'#4f8ef7',Water:'#3b82f6',Treat:'#f59e0b'};
-  list.innerHTML = entries.sort((a,b)=>a.time.localeCompare(b.time)).map(e=>`
-    <div class="log-entry">
-      <div class="log-dot" style="background:${colors[e.type]||'#888'}"></div>
-      <div style="flex:1"><div class="log-type">${e.type} — ${e.detail}</div>${e.notes?`<div class="log-detail">${e.notes}</div>`:''}</div>
-      <div class="log-time">${e.time}</div>
-      <button class="del-btn" onclick="deleteItem('intake',${e.id})">×</button>
-    </div>`).join('');
+  setLoading(true);
+  try {
+    const data = cache.intake || await loadSheet('intake');
+    const entries = data.filter(i => i.date === date);
+    document.getElementById('mealCount').textContent = entries.filter(i=>i.type==='Meal').length;
+    document.getElementById('waterCount').textContent = entries.filter(i=>i.type==='Water').length || '—';
+    document.getElementById('treatCount').textContent = entries.filter(i=>i.type==='Treat').length;
+    const list = document.getElementById('intakeList');
+    if (!entries.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">Nothing logged</div><div class="empty-sub">Tap Log Entry to add meals, water, or treats</div></div>'; return; }
+    const colors = {Meal:'#4f8ef7',Water:'#3b82f6',Treat:'#f59e0b'};
+    list.innerHTML = entries.sort((a,b)=>String(a.time).localeCompare(String(b.time))).map(e=>`
+      <div class="log-entry">
+        <div class="log-dot" style="background:${colors[e.type]||'#888'}"></div>
+        <div style="flex:1"><div class="log-type">${e.type} — ${e.detail}</div>${e.notes?`<div class="log-detail">${e.notes}</div>`:''}</div>
+        <div class="log-time">${e.time}</div>
+        <button class="del-btn" onclick="deleteItem('intake','${e.id}','intakeList',renderIntake)">×</button>
+      </div>`).join('');
+  } catch(err) {
+    showToast('Failed to load: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════
 //  GROWTH
 // ══════════════════════════════════════════════
-let growthTab='weight';
-function setGrowthTab(tab,btn) { growthTab=tab; document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderGrowth(); }
-function saveGrowth() {
-  const e = { id:Date.now(), type:document.getElementById('growthType').value, value:parseFloat(document.getElementById('growthValue').value), date:document.getElementById('growthDate').value, notes:document.getElementById('growthNotes').value };
-  if (!e.value||!e.date) { alert('Please fill in value and date'); return; }
-  state.growth.push(e); save(); closeModal('growthModal');
-  document.getElementById('growthValue').value=''; document.getElementById('growthNotes').value='';
+let growthTab = 'weight';
+function setGrowthTab(tab, btn) {
+  growthTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
   renderGrowth();
 }
-function renderGrowth() {
-  const units={weight:'kg',height:'cm',neck:'cm'};
-  const filtered=state.growth.filter(g=>g.type===growthTab).sort((a,b)=>a.date.localeCompare(b.date));
-  const chart=document.getElementById('growthChart');
-  if (!filtered.length) { chart.innerHTML='<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No measurements yet</div></div>'; }
-  else {
-    const max=Math.max(...filtered.map(g=>g.value));
-    chart.innerHTML='<div style="display:flex;gap:8px;align-items:flex-end;padding:10px 0">'+filtered.map(g=>{
-      const pct=Math.round((g.value/max)*100);
-      return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:44px">
-        <div style="font-size:11px;font-weight:700;color:var(--accent)">${g.value}${units[growthTab]}</div>
-        <div style="width:100%;background:var(--accent-light);border-radius:6px;height:120px;display:flex;align-items:flex-end">
-          <div style="width:100%;background:var(--accent);border-radius:6px;height:${pct}%"></div>
-        </div>
-        <div style="font-size:10px;color:var(--text-muted);text-align:center">${formatDate(g.date)}</div>
-      </div>`;}).join('')+'</div>';
+
+async function saveGrowth() {
+  const value = parseFloat(document.getElementById('growthValue').value);
+  const date = document.getElementById('growthDate').value;
+  if (!value || !date) { showToast('Please fill in value and date', true); return; }
+  const e = { id: uid(), type: document.getElementById('growthType').value, value, date, notes: document.getElementById('growthNotes').value };
+  setSaving('growthSaveBtn', true);
+  try {
+    await apiAppend(SHEETS.growth, e);
+    if (cache.growth) cache.growth.push(e);
+    closeModal('growthModal');
+    document.getElementById('growthValue').value = '';
+    document.getElementById('growthNotes').value = '';
+    showToast('Measurement saved ✓');
+    renderGrowth();
+  } catch(err) {
+    showToast('Save failed: ' + err.message, true);
+  } finally {
+    setSaving('growthSaveBtn', false);
   }
-  const all=[...state.growth].sort((a,b)=>b.date.localeCompare(a.date));
-  document.getElementById('growthHistory').innerHTML = !all.length
-    ? '<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No records yet</div></div>'
-    : all.map(g=>`<div class="log-entry"><div class="log-dot"></div><div style="flex:1"><div class="log-type">${g.type==='weight'?'Weight':g.type==='height'?'Height':'Neck'} — ${g.value} ${units[g.type]}</div>${g.notes?`<div class="log-detail">${g.notes}</div>`:''}</div><div class="log-time">${formatDate(g.date)}</div><button class="del-btn" onclick="deleteItem('growth',${g.id})">×</button></div>`).join('');
+}
+
+async function renderGrowth() {
+  const units = {weight:'kg', height:'cm', neck:'cm'};
+  setLoading(true);
+  try {
+    const data = cache.growth || await loadSheet('growth');
+    const filtered = data.filter(g => g.type === growthTab).sort((a,b) => a.date.localeCompare(b.date));
+    const chart = document.getElementById('growthChart');
+    if (!filtered.length) { chart.innerHTML='<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No measurements yet</div></div>'; }
+    else {
+      const max = Math.max(...filtered.map(g => parseFloat(g.value)));
+      chart.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-end;padding:10px 0">' +
+        filtered.map(g => {
+          const pct = Math.round((parseFloat(g.value) / max) * 100);
+          return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:44px">
+            <div style="font-size:11px;font-weight:700;color:var(--accent)">${g.value}${units[growthTab]}</div>
+            <div style="width:100%;background:var(--accent-light);border-radius:6px;height:120px;display:flex;align-items:flex-end">
+              <div style="width:100%;background:var(--accent);border-radius:6px;height:${pct}%"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);text-align:center">${formatDate(g.date)}</div>
+          </div>`;
+        }).join('') + '</div>';
+    }
+    const all = [...data].sort((a,b) => b.date.localeCompare(a.date));
+    document.getElementById('growthHistory').innerHTML = !all.length
+      ? '<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No records yet</div></div>'
+      : all.map(g=>`<div class="log-entry"><div class="log-dot"></div><div style="flex:1"><div class="log-type">${g.type==='weight'?'Weight':g.type==='height'?'Height':'Neck'} — ${g.value} ${units[g.type]}</div>${g.notes?`<div class="log-detail">${g.notes}</div>`:''}</div><div class="log-time">${formatDate(g.date)}</div><button class="del-btn" onclick="deleteItem('growth','${g.id}','growthHistory',renderGrowth)">×</button></div>`).join('');
+  } catch(err) {
+    showToast('Failed to load: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════
 //  VACCINATIONS
 // ══════════════════════════════════════════════
-function saveVacc() {
-  const e = { id:Date.now(), name:document.getElementById('vaccName').value, date:document.getElementById('vaccDate').value, nextDate:document.getElementById('vaccNext').value, vet:document.getElementById('vaccVet').value, notes:document.getElementById('vaccNotes').value };
-  if (!e.name||!e.date) { alert('Please fill in name and date'); return; }
-  state.vacc.push(e); save(); closeModal('vaccModal');
-  ['vaccName','vaccVet','vaccNotes'].forEach(id=>document.getElementById(id).value=''); document.getElementById('vaccNext').value='';
-  renderVacc();
+async function saveVacc() {
+  const name = document.getElementById('vaccName').value.trim();
+  const date = document.getElementById('vaccDate').value;
+  if (!name || !date) { showToast('Please fill in name and date', true); return; }
+  const e = { id: uid(), name, date, nextDate: document.getElementById('vaccNext').value, vet: document.getElementById('vaccVet').value, notes: document.getElementById('vaccNotes').value };
+  setSaving('vaccSaveBtn', true);
+  try {
+    await apiAppend(SHEETS.vacc, e);
+    if (cache.vacc) cache.vacc.push(e);
+    closeModal('vaccModal');
+    ['vaccName','vaccVet','vaccNotes'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('vaccNext').value = '';
+    showToast('Record saved ✓');
+    renderVacc();
+  } catch(err) {
+    showToast('Save failed: ' + err.message, true);
+  } finally {
+    setSaving('vaccSaveBtn', false);
+  }
 }
-function renderVacc() {
-  const list=document.getElementById('vaccList');
-  if (!state.vacc.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">💉</div><div class="empty-title">No records yet</div></div>'; return; }
-  list.innerHTML=[...state.vacc].sort((a,b)=>b.date.localeCompare(a.date)).map(v=>{
-    const isDue=v.nextDate&&v.nextDate>=today();
-    return `<div class="vacc-item"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="vacc-name">${v.name}</div><span class="status-badge ${isDue?'status-due':'status-done'}">${isDue?'Due '+formatDate(v.nextDate):'Done'}</span></div><div class="vacc-detail">${v.vet?v.vet+' · ':''}${formatDate(v.date)}</div>${v.notes?`<div class="vacc-detail" style="margin-top:4px">${v.notes}</div>`:''}</div><button class="del-btn" onclick="deleteItem('vacc',${v.id})">×</button></div>`;
-  }).join('');
+
+async function renderVacc() {
+  setLoading(true);
+  try {
+    const data = cache.vacc || await loadSheet('vacc');
+    const list = document.getElementById('vaccList');
+    if (!data.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">💉</div><div class="empty-title">No records yet</div></div>'; return; }
+    list.innerHTML = [...data].sort((a,b) => b.date.localeCompare(a.date)).map(v => {
+      const isDue = v.nextDate && v.nextDate >= today();
+      return `<div class="vacc-item"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="vacc-name">${v.name}</div><span class="status-badge ${isDue?'status-due':'status-done'}">${isDue?'Due '+formatDate(v.nextDate):'Done'}</span></div><div class="vacc-detail">${v.vet?v.vet+' · ':''}${formatDate(v.date)}</div>${v.notes?`<div class="vacc-detail" style="margin-top:4px">${v.notes}</div>`:''}</div><button class="del-btn" onclick="deleteItem('vacc','${v.id}','vaccList',renderVacc)">×</button></div>`;
+    }).join('');
+  } catch(err) {
+    showToast('Failed to load: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════
 //  INCIDENTS
 // ══════════════════════════════════════════════
-function saveIncident() {
-  const e = { id:Date.now(), type:document.getElementById('incidentType').value, title:document.getElementById('incidentTitle').value, date:document.getElementById('incidentDate').value, desc:document.getElementById('incidentDesc').value };
-  if (!e.title) { alert('Please add a title'); return; }
-  state.incidents.push(e); save(); closeModal('incidentModal');
-  document.getElementById('incidentTitle').value=''; document.getElementById('incidentDesc').value='';
-  renderIncidents();
+async function saveIncident() {
+  const title = document.getElementById('incidentTitle').value.trim();
+  if (!title) { showToast('Please add a title', true); return; }
+  const e = { id: uid(), type: document.getElementById('incidentType').value, title, date: document.getElementById('incidentDate').value, desc: document.getElementById('incidentDesc').value };
+  setSaving('incidentSaveBtn', true);
+  try {
+    await apiAppend(SHEETS.incidents, e);
+    if (cache.incidents) cache.incidents.push(e);
+    closeModal('incidentModal');
+    document.getElementById('incidentTitle').value = '';
+    document.getElementById('incidentDesc').value = '';
+    showToast('Incident logged ✓');
+    renderIncidents();
+  } catch(err) {
+    showToast('Save failed: ' + err.message, true);
+  } finally {
+    setSaving('incidentSaveBtn', false);
+  }
 }
-function renderIncidents() {
-  const list=document.getElementById('incidentList');
-  if (!state.incidents.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">No incidents logged</div><div class="empty-sub">Hopefully it stays that way!</div></div>'; return; }
-  const bm={'Injury':'incident-injury','Allergic Reaction':'incident-allergy','Medication':'incident-medication','Unusual Behavior':'incident-behavior','Other':'incident-other'};
-  list.innerHTML=[...state.incidents].sort((a,b)=>b.date.localeCompare(a.date)).map(i=>`
-    <div class="log-entry"><div class="log-dot" style="background:var(--danger)"></div><div style="flex:1">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px"><div class="log-type">${i.title}</div><span class="incident-badge ${bm[i.type]||'incident-other'}">${i.type}</span></div>
-      <div class="log-detail">${formatDate(i.date)}</div>${i.desc?`<div class="log-detail" style="margin-top:3px">${i.desc}</div>`:''}
-    </div><button class="del-btn" onclick="deleteItem('incidents',${i.id})">×</button></div>`).join('');
+
+async function renderIncidents() {
+  setLoading(true);
+  try {
+    const data = cache.incidents || await loadSheet('incidents');
+    const list = document.getElementById('incidentList');
+    if (!data.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">No incidents logged</div><div class="empty-sub">Hopefully it stays that way!</div></div>'; return; }
+    const bm = {'Injury':'incident-injury','Allergic Reaction':'incident-allergy','Medication':'incident-medication','Unusual Behavior':'incident-behavior','Other':'incident-other'};
+    list.innerHTML = [...data].sort((a,b) => b.date.localeCompare(a.date)).map(i=>`
+      <div class="log-entry"><div class="log-dot" style="background:var(--danger)"></div><div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px"><div class="log-type">${i.title}</div><span class="incident-badge ${bm[i.type]||'incident-other'}">${i.type}</span></div>
+        <div class="log-detail">${formatDate(i.date)}</div>${i.desc?`<div class="log-detail" style="margin-top:3px">${i.desc}</div>`:''}
+      </div><button class="del-btn" onclick="deleteItem('incidents','${i.id}','incidentList',renderIncidents)">×</button></div>`).join('');
+  } catch(err) {
+    showToast('Failed to load: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════
 //  MILESTONES
 // ══════════════════════════════════════════════
-function saveMilestone() {
-  const e = { id:Date.now(), title:document.getElementById('msTitle').value, date:document.getElementById('msDate').value, desc:document.getElementById('msDesc').value, key:document.getElementById('msKey').value==='yes' };
-  if (!e.title||!e.date) { alert('Please fill in title and date'); return; }
-  state.milestones.push(e); save(); closeModal('milestoneModal');
-  document.getElementById('msTitle').value=''; document.getElementById('msDesc').value='';
-  renderMilestones();
+async function saveMilestone() {
+  const title = document.getElementById('msTitle').value.trim();
+  const date = document.getElementById('msDate').value;
+  if (!title || !date) { showToast('Please fill in title and date', true); return; }
+  const e = { id: uid(), title, date, desc: document.getElementById('msDesc').value, key: document.getElementById('msKey').value === 'yes' };
+  setSaving('msSaveBtn', true);
+  try {
+    await apiAppend(SHEETS.milestones, e);
+    if (cache.milestones) cache.milestones.push(e);
+    closeModal('milestoneModal');
+    document.getElementById('msTitle').value = '';
+    document.getElementById('msDesc').value = '';
+    showToast('Milestone added ✓');
+    renderMilestones();
+  } catch(err) {
+    showToast('Save failed: ' + err.message, true);
+  } finally {
+    setSaving('msSaveBtn', false);
+  }
 }
-function renderMilestones() {
-  const list=document.getElementById('milestoneList');
-  if (!state.milestones.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No milestones yet</div></div>'; return; }
-  list.innerHTML=[...state.milestones].sort((a,b)=>a.date.localeCompare(b.date)).map(m=>`
-    <div class="milestone-item"><div class="milestone-dot"></div><div class="card milestone-card">
-      <div class="milestone-title-row"><div class="milestone-name">${m.title}</div>${m.key?'<span class="badge">Key milestone</span>':''}<span class="day-badge">Day ${daysSince(DOB)-daysSince(m.date)}</span></div>
-      <div class="milestone-date">${formatDate(m.date)}</div>${m.desc?`<div class="milestone-desc">${m.desc}</div>`:''}
-      <button class="del-btn" style="font-size:12px;margin-top:8px;color:var(--text-muted)" onclick="deleteItem('milestones',${m.id})">Delete</button>
-    </div></div>`).join('');
+
+async function renderMilestones() {
+  setLoading(true);
+  try {
+    const data = cache.milestones || await loadSheet('milestones');
+    const list = document.getElementById('milestoneList');
+    if (!data.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No milestones yet</div></div>'; return; }
+    list.innerHTML = [...data].sort((a,b) => a.date.localeCompare(b.date)).map(m=>`
+      <div class="milestone-item"><div class="milestone-dot"></div><div class="card milestone-card">
+        <div class="milestone-title-row"><div class="milestone-name">${m.title}</div>${(m.key===true||m.key==='TRUE'||m.key==='true')?'<span class="badge">Key milestone</span>':''}<span class="day-badge">Day ${daysSince(m.date)}</span></div>
+        <div class="milestone-date">${formatDate(m.date)}</div>${m.desc?`<div class="milestone-desc">${m.desc}</div>`:''}
+        <button class="del-btn" style="font-size:12px;margin-top:8px;color:var(--text-muted)" onclick="deleteItem('milestones','${m.id}','milestoneList',renderMilestones)">Delete</button>
+      </div></div>`).join('');
+  } catch(err) {
+    showToast('Failed to load: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════
-//  GALLERY
+//  GALLERY — stores base64 in Photos sheet
 // ══════════════════════════════════════════════
-function addPhotos(e) {
-  Array.from(e.target.files).forEach(file => {
-    const r=new FileReader();
-    r.onload=ev=>{ state.photos.push({id:Date.now()+Math.random(),src:ev.target.result,name:file.name}); save(); renderGallery(); };
-    r.readAsDataURL(file);
-  }); e.target.value='';
+async function addPhotos(e) {
+  const files = Array.from(e.target.files);
+  setLoading(true);
+  try {
+    for (const file of files) {
+      const src = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = ev => res(ev.target.result);
+        r.onerror = () => rej(new Error('Read failed'));
+        r.readAsDataURL(file);
+      });
+      const entry = { id: uid(), url: src, name: file.name, date: today() };
+      await apiAppend(SHEETS.photos, entry);
+      if (cache.photos) cache.photos.push(entry);
+    }
+    showToast('Photo(s) saved ✓');
+    renderGallery();
+  } catch(err) {
+    showToast('Upload failed: ' + err.message, true);
+  } finally {
+    setLoading(false);
+    e.target.value = '';
+  }
 }
-function renderGallery() {
-  const g=document.getElementById('galleryGrid');
-  if (!state.photos.length) { g.innerHTML='<div class="card"><div class="empty-state"><div class="empty-icon">📸</div><div class="empty-title">No photos yet</div><div class="empty-sub">Upload your first photo of Bluey!</div></div></div>'; return; }
-  g.innerHTML='<div class="photo-grid">'+state.photos.map(p=>`<div class="photo-item"><img src="${p.src}" alt="${p.name}" /><button class="photo-del" onclick="deletePhoto(${p.id})">×</button></div>`).join('')+'</div>';
+
+async function renderGallery() {
+  setLoading(true);
+  try {
+    const data = cache.photos || await loadSheet('photos');
+    const g = document.getElementById('galleryGrid');
+    if (!data.length) { g.innerHTML='<div class="card"><div class="empty-state"><div class="empty-icon">📸</div><div class="empty-title">No photos yet</div><div class="empty-sub">Upload your first photo of Bluey!</div></div></div>'; return; }
+    g.innerHTML = '<div class="photo-grid">' + data.map(p=>`
+      <div class="photo-item">
+        <img src="${p.url}" alt="${p.name}" loading="lazy"/>
+        <button class="photo-del" onclick="deleteItem('photos','${p.id}','galleryGrid',renderGallery)">×</button>
+      </div>`).join('') + '</div>';
+  } catch(err) {
+    showToast('Failed to load gallery: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
-function deletePhoto(id) { state.photos=state.photos.filter(p=>p.id!==id); save(); renderGallery(); }
 
 // ══════════════════════════════════════════════
-//  DELETE
+//  DELETE (generic)
 // ══════════════════════════════════════════════
-function deleteItem(type,id) {
+async function deleteItem(sheetKey, id, containerId, refreshFn) {
   if (!confirm('Delete this entry?')) return;
-  state[type]=state[type].filter(i=>i.id!==id); save();
-  ({intake:renderIntake,growth:renderGrowth,vacc:renderVacc,incidents:renderIncidents,milestones:renderMilestones}[type]||(() => {}))();
-  renderDashboard();
+  setLoading(true);
+  // Optimistic remove from cache
+  if (cache[sheetKey]) cache[sheetKey] = cache[sheetKey].filter(i => String(i.id) !== String(id));
+  refreshFn();
+  try {
+    await apiDelete(SHEETS[sheetKey], id);
+    showToast('Deleted ✓');
+  } catch(err) {
+    showToast('Delete failed: ' + err.message, true);
+    // Reload from server to restore
+    cache[sheetKey] = null;
+    refreshFn();
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════
-//  BACKUP / RESTORE
+//  BACKUP — download all cached data as JSON
 // ══════════════════════════════════════════════
-function backupData() {
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));
-  a.download='bluey-backup-'+today()+'.json'; a.click();
-}
-function restoreData(e) {
-  const file=e.target.files[0]; if (!file) return;
-  const r=new FileReader();
-  r.onload=ev=>{ try { state=JSON.parse(ev.target.result); save(); renderDashboard(); alert('Backup restored!'); } catch { alert('Invalid file'); } };
-  r.readAsText(file);
+async function backupData() {
+  setLoading(true);
+  try {
+    const allKeys = Object.keys(SHEETS);
+    const result = {};
+    for (const key of allKeys) {
+      result[key] = await apiRead(SHEETS[key]);
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], {type:'application/json'}));
+    a.download = 'bluey-backup-' + today() + '.json';
+    a.click();
+    showToast('Backup downloaded ✓');
+  } catch(err) {
+    showToast('Backup failed: ' + err.message, true);
+  } finally {
+    setLoading(false);
+  }
 }
 
 // ══════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════
-renderDashboard();
 document.getElementById('intakeDate').value = today();
 document.getElementById('routineDate').value = today();
+renderDashboard();
 </script>
 </body>
 </html>
