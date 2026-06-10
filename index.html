@@ -531,9 +531,10 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 // ══════════════════════════════════════════════
 //  CONFIG — swap this URL for your deployed Apps Script endpoint
 // ══════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════
 const GAS_URL = '/api/gas';
 
-// Sheet name mapping (matches your actual tab names in the "bluey" spreadsheet)
 const SHEETS = {
   intake:     'Intake',
   growth:     'Growth',
@@ -545,52 +546,60 @@ const SHEETS = {
 };
 
 // ══════════════════════════════════════════════
-//  API LAYER — all calls go through here
+//  API LAYER
 // ══════════════════════════════════════════════
 async function apiRead(sheet) {
-  const url = `${GAS_URL}?action=read&sheet=${encodeURIComponent(sheet)}`;
-  const res = await fetch(url);
+  const res = await fetch(`${GAS_URL}?action=read&sheet=${encodeURIComponent(sheet)}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error);
-  return data; // array of objects
+  // Normalise every row: stringify all values so comparisons work consistently
+  return (data || []).map(row => {
+    const out = {};
+    for (const k in row) out[k] = row[k] === null || row[k] === undefined ? '' : String(row[k]);
+    return out;
+  });
 }
 
 async function apiAppend(sheet, row) {
-  const url = `${GAS_URL}?action=append&sheet=${encodeURIComponent(sheet)}&row=${encodeURIComponent(JSON.stringify(row))}`;
-  const res = await fetch(url);
+  const res = await fetch(`${GAS_URL}?action=append&sheet=${encodeURIComponent(sheet)}&row=${encodeURIComponent(JSON.stringify(row))}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error);
   return data;
 }
 
 async function apiDelete(sheet, id) {
-  const url = `${GAS_URL}?action=delete&sheet=${encodeURIComponent(sheet)}&id=${encodeURIComponent(id)}`;
-  const res = await fetch(url);
+  const res = await fetch(`${GAS_URL}?action=delete&sheet=${encodeURIComponent(sheet)}&id=${encodeURIComponent(id)}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error);
   return data;
 }
 
 async function apiUpsertRoutine(taskData) {
-  const url = `${GAS_URL}?action=upsert_routine&sheet=${encodeURIComponent(SHEETS.routine)}&data=${encodeURIComponent(JSON.stringify(taskData))}`;
-  const res = await fetch(url);
+  const res = await fetch(`${GAS_URL}?action=upsert_routine&sheet=${encodeURIComponent(SHEETS.routine)}&data=${encodeURIComponent(JSON.stringify(taskData))}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error);
   return data;
 }
 
 // ══════════════════════════════════════════════
-//  IN-MEMORY CACHE — refreshed on page navigate
+//  CACHE
+//  - loadSheet(key)         → always fetches fresh from server, updates cache
+//  - getSheet(key)          → returns cache if available, else fetches
+//  - invalidate(key)        → clears one sheet so next getSheet re-fetches
 // ══════════════════════════════════════════════
-const cache = {
-  intake: null, growth: null, vacc: null,
-  incidents: null, milestones: null, routine: null, photos: null
-};
+const cache = {};
 
 async function loadSheet(key) {
   cache[key] = await apiRead(SHEETS[key]);
   return cache[key];
 }
+
+async function getSheet(key) {
+  if (cache[key]) return cache[key];
+  return loadSheet(key);
+}
+
+function invalidate(key) { delete cache[key]; }
 
 // ══════════════════════════════════════════════
 //  UI HELPERS
@@ -603,7 +612,8 @@ function showToast(msg, isError = false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show' + (isError ? ' error' : '');
-  setTimeout(() => t.className = 'toast', 3000);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = 'toast', 3000);
 }
 
 function setSaving(btnId, saving) {
@@ -649,9 +659,31 @@ function formatAge(dob) {
 }
 function formatDate(s) {
   if (!s) return '';
+  // Handle GSheets Date objects serialised as "Date(YYYY,M,D)" strings
+  const match = String(s).match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (match) {
+    const d = new Date(+match[1], +match[2], +match[3]);
+    return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  }
   return new Date(s).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
 }
-function uid() { return Date.now() + Math.floor(Math.random()*10000); }
+// Normalise any date value → YYYY-MM-DD string for comparisons
+function normDate(s) {
+  if (!s) return '';
+  const match = String(s).match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (match) {
+    const y = match[1], m = String(+match[2]+1).padStart(2,'0'), d = String(match[3]).padStart(2,'0');
+    return `${y}-${m}-${d}`;
+  }
+  // Already YYYY-MM-DD or similar
+  const d = new Date(s);
+  if (isNaN(d)) return String(s).trim();
+  return d.toISOString().split('T')[0];
+}
+function isDone(val) {
+  return val === 'TRUE' || val === 'true' || val === '1' || val === true || val === 1;
+}
+function uid() { return String(Date.now()) + String(Math.floor(Math.random()*10000)); }
 
 // ══════════════════════════════════════════════
 //  NAV
@@ -661,15 +693,16 @@ function showPage(id, btn) {
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   if (btn) btn.classList.add('active');
+  // Always fetch fresh when navigating to a page
   ({
     dashboard:    renderDashboard,
     routine:      renderRoutine,
-    intake:       () => { if (!document.getElementById('intakeDate').value) document.getElementById('intakeDate').value = today(); renderIntake(); },
-    growth:       renderGrowth,
-    vaccinations: renderVacc,
-    incidents:    renderIncidents,
-    milestones:   renderMilestones,
-    gallery:      renderGallery,
+    intake:       () => { if (!document.getElementById('intakeDate').value) document.getElementById('intakeDate').value = today(); invalidate('intake'); renderIntake(); },
+    growth:       () => { invalidate('growth'); renderGrowth(); },
+    vaccinations: () => { invalidate('vacc'); renderVacc(); },
+    incidents:    () => { invalidate('incidents'); renderIncidents(); },
+    milestones:   () => { invalidate('milestones'); renderMilestones(); },
+    gallery:      () => { invalidate('photos'); renderGallery(); },
   }[id] || (() => {}))();
 }
 
@@ -695,6 +728,7 @@ async function renderDashboard() {
 
   setLoading(true);
   try {
+    // Always load fresh on dashboard
     const [intakeData, growthData, vaccData, incData, msData, routineData] = await Promise.all([
       loadSheet('intake'), loadSheet('growth'), loadSheet('vacc'),
       loadSheet('incidents'), loadSheet('milestones'), loadSheet('routine')
@@ -703,31 +737,31 @@ async function renderDashboard() {
     const t = today();
 
     // Meals today
-    const meals = intakeData.filter(i => i.date === t && i.type === 'Meal');
+    const meals = intakeData.filter(i => normDate(i.date) === t && i.type === 'Meal');
     document.getElementById('dashMeals').textContent = meals.length ? meals.length + ' meal(s)' : 'Not logged';
 
     // Routine today
-    const todayRoutine = routineData.filter(r => r.date === t);
-    const done = todayRoutine.filter(r => r.done === true || r.done === 'TRUE' || r.done === '1').length;
+    const done = routineData.filter(r => normDate(r.date) === t && isDone(r.done)).length;
     document.getElementById('dashRoutine').textContent = done + ' / ' + ROUTINE.length + ' done';
 
     // Weight
-    const wts = growthData.filter(g => g.type === 'weight').sort((a,b) => b.date.localeCompare(a.date));
+    const wts = growthData.filter(g => g.type === 'weight').sort((a,b) => normDate(b.date).localeCompare(normDate(a.date)));
     document.getElementById('dashWeight').textContent = wts.length ? wts[0].value + ' kg' : 'Not measured';
 
     // Next vaccine
-    const upcoming = vaccData.filter(v => v.nextDate && v.nextDate >= t).sort((a,b) => a.nextDate.localeCompare(b.nextDate));
-    document.getElementById('dashVaccine').textContent = upcoming.length ? upcoming[0].name + ' · ' + formatDate(upcoming[0].nextDate) : 'No upcoming';
+    const upcoming = vaccData
+      .filter(v => v.nextDate && normDate(v.nextDate) >= t)
+      .sort((a,b) => normDate(a.nextDate).localeCompare(normDate(b.nextDate)));
+    document.getElementById('dashVaccine').textContent = upcoming.length
+      ? upcoming[0].name + ' · ' + formatDate(upcoming[0].nextDate) : 'No upcoming';
 
     // Incidents
-    const inc = document.getElementById('dashIncidents');
-    inc.innerHTML = !incData.length
+    document.getElementById('dashIncidents').innerHTML = !incData.length
       ? '<p style="font-size:13px;color:var(--text-muted)">No incidents — great!</p>'
       : incData.slice(0,3).map(i=>`<div class="log-entry"><div class="log-dot" style="background:var(--danger)"></div><div><div class="log-type">${i.title}</div><div class="log-detail">${i.type} · ${formatDate(i.date)}</div></div></div>`).join('');
 
     // Milestones
-    const ms = document.getElementById('dashMilestones');
-    ms.innerHTML = !msData.length
+    document.getElementById('dashMilestones').innerHTML = !msData.length
       ? '<div class="empty-state" style="padding:16px"><div class="empty-icon">⭐</div><div class="empty-title" style="font-size:13px">No milestones yet</div></div>'
       : msData.slice(0,3).map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--card-border)"><span style="color:var(--accent)">●</span><div><div style="font-size:13px;font-weight:600">${m.title}</div><div style="font-size:11px;color:var(--text-muted)">${formatDate(m.date)}</div></div></div>`).join('');
 
@@ -740,80 +774,100 @@ async function renderDashboard() {
 
 // ══════════════════════════════════════════════
 //  DAILY ROUTINE
+//  Key fixes:
+//  1. Always load fresh from server (don't use stale cache)
+//  2. Use normDate() for date comparison
+//  3. toggleRoutine updates cache in-place and does NOT re-render from server
 // ══════════════════════════════════════════════
 async function renderRoutine() {
   const el = document.getElementById('routineDate');
   if (!el.value) el.value = today();
-  const date = el.value;
+  const date = el.value; // YYYY-MM-DD
 
   document.getElementById('routineContent').innerHTML = '<div style="height:200px" class="skeleton"></div>';
   setLoading(true);
   try {
+    // Always fetch fresh routine from server so we get latest state
     const rows = await loadSheet('routine');
-    // Build a map: taskId → done boolean for this date
+
+    // Build dayMap from server data using normDate
     const dayMap = {};
-    rows.filter(r => r.date === date).forEach(r => {
-      dayMap[r.taskId] = (r.done === true || r.done === 'TRUE' || r.done === '1' || r.done === 1);
+    rows.filter(r => normDate(r.date) === date).forEach(r => {
+      dayMap[r.taskId] = isDone(r.done);
     });
 
-    const doneCount = ROUTINE.filter(r => dayMap[r.id]).length;
-    document.getElementById('routineDoneCount').textContent = doneCount;
-    document.getElementById('routineTotalCount').textContent = ROUTINE.length;
-
-    const groups = {};
-    ROUTINE.forEach(r => { if (!groups[r.group]) groups[r.group]=[]; groups[r.group].push(r); });
-
-    document.getElementById('routineContent').innerHTML = Object.entries(groups).map(([g, tasks]) => `
-      <div class="routine-section">
-        <div class="routine-section-title">${g}</div>
-        <div class="routine-grid">
-          ${tasks.map(r => `
-            <div class="routine-item ${dayMap[r.id] ? 'done' : ''}" id="ri-${r.id}" onclick="toggleRoutine('${date}','${r.id}')">
-              <div class="routine-check">${dayMap[r.id] ? '<span style="color:#fff;font-weight:800;font-size:12px">✓</span>' : ''}</div>
-              <div class="routine-item-icon">${r.icon}</div>
-              <div>
-                <div class="routine-item-label">${r.label}</div>
-                <div class="routine-item-sub">${r.sub}</div>
-              </div>
-            </div>`).join('')}
-        </div>
-      </div>`).join('');
+    renderRoutineUI(date, dayMap);
   } catch(err) {
     showToast('Failed to load routine: ' + err.message, true);
+    document.getElementById('routineContent').innerHTML = '<p style="padding:20px;color:var(--danger)">Failed to load — check connection</p>';
   } finally {
     setLoading(false);
   }
 }
 
+function renderRoutineUI(date, dayMap) {
+  const doneCount = ROUTINE.filter(r => dayMap[r.id]).length;
+  document.getElementById('routineDoneCount').textContent = doneCount;
+  document.getElementById('routineTotalCount').textContent = ROUTINE.length;
+
+  const groups = {};
+  ROUTINE.forEach(r => { if (!groups[r.group]) groups[r.group]=[]; groups[r.group].push(r); });
+
+  document.getElementById('routineContent').innerHTML = Object.entries(groups).map(([g, tasks]) => `
+    <div class="routine-section">
+      <div class="routine-section-title">${g}</div>
+      <div class="routine-grid">
+        ${tasks.map(r => `
+          <div class="routine-item ${dayMap[r.id] ? 'done' : ''}" id="ri-${r.id}" onclick="toggleRoutine('${date}','${r.id}')">
+            <div class="routine-check">${dayMap[r.id] ? '<span style="color:#fff;font-weight:800;font-size:12px">✓</span>' : ''}</div>
+            <div class="routine-item-icon">${r.icon}</div>
+            <div>
+              <div class="routine-item-label">${r.label}</div>
+              <div class="routine-item-sub">${r.sub}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
 async function toggleRoutine(date, taskId) {
   const el = document.getElementById('ri-' + taskId);
-  if (!el) return;
-  const isDone = el.classList.contains('done');
-  const newDone = !isDone;
+  if (!el || el.classList.contains('saving')) return;
 
-  // Optimistic UI update
+  const wasDone = el.classList.contains('done');
+  const newDone = !wasDone;
+
+  // 1. Instant optimistic UI
   el.classList.toggle('done', newDone);
   el.classList.add('saving');
+  el.querySelector('.routine-check').innerHTML = newDone ? '<span style="color:#fff;font-weight:800;font-size:12px">✓</span>' : '';
 
-  // Update cache optimistically
+  // 2. Update in-memory cache so count reflects correctly
   if (cache.routine) {
-    const existing = cache.routine.find(r => r.date === date && r.taskId === taskId);
-    if (existing) existing.done = newDone ? 'TRUE' : 'FALSE';
-    else cache.routine.push({ date, taskId, done: newDone ? 'TRUE' : 'FALSE' });
+    const existing = cache.routine.find(r => normDate(r.date) === date && r.taskId === taskId);
+    if (existing) {
+      existing.done = newDone ? 'TRUE' : 'FALSE';
+    } else {
+      cache.routine.push({ id: uid(), date, taskId, done: newDone ? 'TRUE' : 'FALSE' });
+    }
   }
 
-  // Update count
-  const doneCount = ROUTINE.filter(r => {
-    const cacheRow = cache.routine ? cache.routine.find(x => x.date === date && x.taskId === r.id) : null;
-    return cacheRow && (cacheRow.done === true || cacheRow.done === 'TRUE' || cacheRow.done === '1');
-  }).length;
+  // 3. Update count from cache
+  const doneCount = (cache.routine || []).filter(r => normDate(r.date) === date && isDone(r.done)).length;
   document.getElementById('routineDoneCount').textContent = doneCount;
 
+  // 4. Persist to GSheets
   try {
     await apiUpsertRoutine({ date, taskId, done: newDone ? 'TRUE' : 'FALSE' });
   } catch(err) {
     // Revert on failure
-    el.classList.toggle('done', isDone);
+    el.classList.toggle('done', wasDone);
+    el.querySelector('.routine-check').innerHTML = wasDone ? '<span style="color:#fff;font-weight:800;font-size:12px">✓</span>' : '';
+    // Fix cache back
+    if (cache.routine) {
+      const existing = cache.routine.find(r => normDate(r.date) === date && r.taskId === taskId);
+      if (existing) existing.done = wasDone ? 'TRUE' : 'FALSE';
+    }
     showToast('Save failed — try again', true);
   } finally {
     el.classList.remove('saving');
@@ -837,7 +891,7 @@ async function saveIntake() {
   setSaving('intakeSaveBtn', true);
   try {
     await apiAppend(SHEETS.intake, e);
-    if (cache.intake) cache.intake.push(e);
+    invalidate('intake');
     closeModal('intakeModal');
     document.getElementById('intakeDetail').value = '';
     document.getElementById('intakeNotes').value = '';
@@ -854,8 +908,8 @@ async function renderIntake() {
   const date = document.getElementById('intakeDate').value || today();
   setLoading(true);
   try {
-    const data = cache.intake || await loadSheet('intake');
-    const entries = data.filter(i => i.date === date);
+    const data = await getSheet('intake');
+    const entries = data.filter(i => normDate(i.date) === date);
     document.getElementById('mealCount').textContent = entries.filter(i=>i.type==='Meal').length;
     document.getElementById('waterCount').textContent = entries.filter(i=>i.type==='Water').length || '—';
     document.getElementById('treatCount').textContent = entries.filter(i=>i.type==='Treat').length;
@@ -867,7 +921,7 @@ async function renderIntake() {
         <div class="log-dot" style="background:${colors[e.type]||'#888'}"></div>
         <div style="flex:1"><div class="log-type">${e.type} — ${e.detail}</div>${e.notes?`<div class="log-detail">${e.notes}</div>`:''}</div>
         <div class="log-time">${e.time}</div>
-        <button class="del-btn" onclick="deleteItem('intake','${e.id}','intakeList',renderIntake)">×</button>
+        <button class="del-btn" onclick="deleteItem('intake','${e.id}',renderIntake)">×</button>
       </div>`).join('');
   } catch(err) {
     showToast('Failed to load: ' + err.message, true);
@@ -895,7 +949,7 @@ async function saveGrowth() {
   setSaving('growthSaveBtn', true);
   try {
     await apiAppend(SHEETS.growth, e);
-    if (cache.growth) cache.growth.push(e);
+    invalidate('growth');
     closeModal('growthModal');
     document.getElementById('growthValue').value = '';
     document.getElementById('growthNotes').value = '';
@@ -912,15 +966,15 @@ async function renderGrowth() {
   const units = {weight:'kg', height:'cm', neck:'cm'};
   setLoading(true);
   try {
-    const data = cache.growth || await loadSheet('growth');
-    const filtered = data.filter(g => g.type === growthTab).sort((a,b) => a.date.localeCompare(b.date));
+    const data = await getSheet('growth');
+    const filtered = data.filter(g => g.type === growthTab).sort((a,b) => normDate(a.date).localeCompare(normDate(b.date)));
     const chart = document.getElementById('growthChart');
     if (!filtered.length) { chart.innerHTML='<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No measurements yet</div></div>'; }
     else {
       const max = Math.max(...filtered.map(g => parseFloat(g.value)));
       chart.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-end;padding:10px 0">' +
         filtered.map(g => {
-          const pct = Math.round((parseFloat(g.value) / max) * 100);
+          const pct = Math.round((parseFloat(g.value)/max)*100);
           return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:44px">
             <div style="font-size:11px;font-weight:700;color:var(--accent)">${g.value}${units[growthTab]}</div>
             <div style="width:100%;background:var(--accent-light);border-radius:6px;height:120px;display:flex;align-items:flex-end">
@@ -930,10 +984,10 @@ async function renderGrowth() {
           </div>`;
         }).join('') + '</div>';
     }
-    const all = [...data].sort((a,b) => b.date.localeCompare(a.date));
+    const all = [...data].sort((a,b) => normDate(b.date).localeCompare(normDate(a.date)));
     document.getElementById('growthHistory').innerHTML = !all.length
       ? '<div class="empty-state"><div class="empty-icon">📈</div><div class="empty-title">No records yet</div></div>'
-      : all.map(g=>`<div class="log-entry"><div class="log-dot"></div><div style="flex:1"><div class="log-type">${g.type==='weight'?'Weight':g.type==='height'?'Height':'Neck'} — ${g.value} ${units[g.type]}</div>${g.notes?`<div class="log-detail">${g.notes}</div>`:''}</div><div class="log-time">${formatDate(g.date)}</div><button class="del-btn" onclick="deleteItem('growth','${g.id}','growthHistory',renderGrowth)">×</button></div>`).join('');
+      : all.map(g=>`<div class="log-entry"><div class="log-dot"></div><div style="flex:1"><div class="log-type">${g.type==='weight'?'Weight':g.type==='height'?'Height':'Neck'} — ${g.value} ${units[g.type]||'?'}</div>${g.notes?`<div class="log-detail">${g.notes}</div>`:''}</div><div class="log-time">${formatDate(g.date)}</div><button class="del-btn" onclick="deleteItem('growth','${g.id}',renderGrowth)">×</button></div>`).join('');
   } catch(err) {
     showToast('Failed to load: ' + err.message, true);
   } finally {
@@ -952,7 +1006,7 @@ async function saveVacc() {
   setSaving('vaccSaveBtn', true);
   try {
     await apiAppend(SHEETS.vacc, e);
-    if (cache.vacc) cache.vacc.push(e);
+    invalidate('vacc');
     closeModal('vaccModal');
     ['vaccName','vaccVet','vaccNotes'].forEach(id => document.getElementById(id).value='');
     document.getElementById('vaccNext').value = '';
@@ -968,12 +1022,13 @@ async function saveVacc() {
 async function renderVacc() {
   setLoading(true);
   try {
-    const data = cache.vacc || await loadSheet('vacc');
+    const data = await getSheet('vacc');
     const list = document.getElementById('vaccList');
     if (!data.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">💉</div><div class="empty-title">No records yet</div></div>'; return; }
-    list.innerHTML = [...data].sort((a,b) => b.date.localeCompare(a.date)).map(v => {
-      const isDue = v.nextDate && v.nextDate >= today();
-      return `<div class="vacc-item"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="vacc-name">${v.name}</div><span class="status-badge ${isDue?'status-due':'status-done'}">${isDue?'Due '+formatDate(v.nextDate):'Done'}</span></div><div class="vacc-detail">${v.vet?v.vet+' · ':''}${formatDate(v.date)}</div>${v.notes?`<div class="vacc-detail" style="margin-top:4px">${v.notes}</div>`:''}</div><button class="del-btn" onclick="deleteItem('vacc','${v.id}','vaccList',renderVacc)">×</button></div>`;
+    const t = today();
+    list.innerHTML = [...data].sort((a,b) => normDate(b.date).localeCompare(normDate(a.date))).map(v => {
+      const isDue = v.nextDate && normDate(v.nextDate) >= t;
+      return `<div class="vacc-item"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div class="vacc-name">${v.name}</div><span class="status-badge ${isDue?'status-due':'status-done'}">${isDue?'Due '+formatDate(v.nextDate):'Done'}</span></div><div class="vacc-detail">${v.vet?v.vet+' · ':''}${formatDate(v.date)}</div>${v.notes?`<div class="vacc-detail" style="margin-top:4px">${v.notes}</div>`:''}</div><button class="del-btn" onclick="deleteItem('vacc','${v.id}',renderVacc)">×</button></div>`;
     }).join('');
   } catch(err) {
     showToast('Failed to load: ' + err.message, true);
@@ -992,7 +1047,7 @@ async function saveIncident() {
   setSaving('incidentSaveBtn', true);
   try {
     await apiAppend(SHEETS.incidents, e);
-    if (cache.incidents) cache.incidents.push(e);
+    invalidate('incidents');
     closeModal('incidentModal');
     document.getElementById('incidentTitle').value = '';
     document.getElementById('incidentDesc').value = '';
@@ -1008,15 +1063,15 @@ async function saveIncident() {
 async function renderIncidents() {
   setLoading(true);
   try {
-    const data = cache.incidents || await loadSheet('incidents');
+    const data = await getSheet('incidents');
     const list = document.getElementById('incidentList');
     if (!data.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🐾</div><div class="empty-title">No incidents logged</div><div class="empty-sub">Hopefully it stays that way!</div></div>'; return; }
     const bm = {'Injury':'incident-injury','Allergic Reaction':'incident-allergy','Medication':'incident-medication','Unusual Behavior':'incident-behavior','Other':'incident-other'};
-    list.innerHTML = [...data].sort((a,b) => b.date.localeCompare(a.date)).map(i=>`
+    list.innerHTML = [...data].sort((a,b) => normDate(b.date).localeCompare(normDate(a.date))).map(i=>`
       <div class="log-entry"><div class="log-dot" style="background:var(--danger)"></div><div style="flex:1">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px"><div class="log-type">${i.title}</div><span class="incident-badge ${bm[i.type]||'incident-other'}">${i.type}</span></div>
         <div class="log-detail">${formatDate(i.date)}</div>${i.desc?`<div class="log-detail" style="margin-top:3px">${i.desc}</div>`:''}
-      </div><button class="del-btn" onclick="deleteItem('incidents','${i.id}','incidentList',renderIncidents)">×</button></div>`).join('');
+      </div><button class="del-btn" onclick="deleteItem('incidents','${i.id}',renderIncidents)">×</button></div>`).join('');
   } catch(err) {
     showToast('Failed to load: ' + err.message, true);
   } finally {
@@ -1031,11 +1086,11 @@ async function saveMilestone() {
   const title = document.getElementById('msTitle').value.trim();
   const date = document.getElementById('msDate').value;
   if (!title || !date) { showToast('Please fill in title and date', true); return; }
-  const e = { id: uid(), title, date, desc: document.getElementById('msDesc').value, key: document.getElementById('msKey').value === 'yes' };
+  const e = { id: uid(), title, date, desc: document.getElementById('msDesc').value, key: document.getElementById('msKey').value === 'yes' ? 'TRUE' : 'FALSE' };
   setSaving('msSaveBtn', true);
   try {
     await apiAppend(SHEETS.milestones, e);
-    if (cache.milestones) cache.milestones.push(e);
+    invalidate('milestones');
     closeModal('milestoneModal');
     document.getElementById('msTitle').value = '';
     document.getElementById('msDesc').value = '';
@@ -1051,14 +1106,14 @@ async function saveMilestone() {
 async function renderMilestones() {
   setLoading(true);
   try {
-    const data = cache.milestones || await loadSheet('milestones');
+    const data = await getSheet('milestones');
     const list = document.getElementById('milestoneList');
     if (!data.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No milestones yet</div></div>'; return; }
-    list.innerHTML = [...data].sort((a,b) => a.date.localeCompare(b.date)).map(m=>`
+    list.innerHTML = [...data].sort((a,b) => normDate(a.date).localeCompare(normDate(b.date))).map(m=>`
       <div class="milestone-item"><div class="milestone-dot"></div><div class="card milestone-card">
-        <div class="milestone-title-row"><div class="milestone-name">${m.title}</div>${(m.key===true||m.key==='TRUE'||m.key==='true')?'<span class="badge">Key milestone</span>':''}<span class="day-badge">Day ${daysSince(m.date)}</span></div>
+        <div class="milestone-title-row"><div class="milestone-name">${m.title}</div>${isDone(m.key)?'<span class="badge">Key milestone</span>':''}<span class="day-badge">Day ${daysSince(normDate(m.date))}</span></div>
         <div class="milestone-date">${formatDate(m.date)}</div>${m.desc?`<div class="milestone-desc">${m.desc}</div>`:''}
-        <button class="del-btn" style="font-size:12px;margin-top:8px;color:var(--text-muted)" onclick="deleteItem('milestones','${m.id}','milestoneList',renderMilestones)">Delete</button>
+        <button class="del-btn" style="font-size:12px;margin-top:8px;color:var(--text-muted)" onclick="deleteItem('milestones','${m.id}',renderMilestones)">Delete</button>
       </div></div>`).join('');
   } catch(err) {
     showToast('Failed to load: ' + err.message, true);
@@ -1068,7 +1123,7 @@ async function renderMilestones() {
 }
 
 // ══════════════════════════════════════════════
-//  GALLERY — stores base64 in Photos sheet
+//  GALLERY
 // ══════════════════════════════════════════════
 async function addPhotos(e) {
   const files = Array.from(e.target.files);
@@ -1083,8 +1138,8 @@ async function addPhotos(e) {
       });
       const entry = { id: uid(), url: src, name: file.name, date: today() };
       await apiAppend(SHEETS.photos, entry);
-      if (cache.photos) cache.photos.push(entry);
     }
+    invalidate('photos');
     showToast('Photo(s) saved ✓');
     renderGallery();
   } catch(err) {
@@ -1098,13 +1153,13 @@ async function addPhotos(e) {
 async function renderGallery() {
   setLoading(true);
   try {
-    const data = cache.photos || await loadSheet('photos');
+    const data = await getSheet('photos');
     const g = document.getElementById('galleryGrid');
     if (!data.length) { g.innerHTML='<div class="card"><div class="empty-state"><div class="empty-icon">📸</div><div class="empty-title">No photos yet</div><div class="empty-sub">Upload your first photo of Bluey!</div></div></div>'; return; }
     g.innerHTML = '<div class="photo-grid">' + data.map(p=>`
       <div class="photo-item">
         <img src="${p.url}" alt="${p.name}" loading="lazy"/>
-        <button class="photo-del" onclick="deleteItem('photos','${p.id}','galleryGrid',renderGallery)">×</button>
+        <button class="photo-del" onclick="deleteItem('photos','${p.id}',renderGallery)">×</button>
       </div>`).join('') + '</div>';
   } catch(err) {
     showToast('Failed to load gallery: ' + err.message, true);
@@ -1116,7 +1171,7 @@ async function renderGallery() {
 // ══════════════════════════════════════════════
 //  DELETE (generic)
 // ══════════════════════════════════════════════
-async function deleteItem(sheetKey, id, containerId, refreshFn) {
+async function deleteItem(sheetKey, id, refreshFn) {
   if (!confirm('Delete this entry?')) return;
   setLoading(true);
   // Optimistic remove from cache
@@ -1127,8 +1182,7 @@ async function deleteItem(sheetKey, id, containerId, refreshFn) {
     showToast('Deleted ✓');
   } catch(err) {
     showToast('Delete failed: ' + err.message, true);
-    // Reload from server to restore
-    cache[sheetKey] = null;
+    invalidate(sheetKey);
     refreshFn();
   } finally {
     setLoading(false);
@@ -1136,14 +1190,13 @@ async function deleteItem(sheetKey, id, containerId, refreshFn) {
 }
 
 // ══════════════════════════════════════════════
-//  BACKUP — download all cached data as JSON
+//  BACKUP
 // ══════════════════════════════════════════════
 async function backupData() {
   setLoading(true);
   try {
-    const allKeys = Object.keys(SHEETS);
     const result = {};
-    for (const key of allKeys) {
+    for (const key of Object.keys(SHEETS)) {
       result[key] = await apiRead(SHEETS[key]);
     }
     const a = document.createElement('a');
